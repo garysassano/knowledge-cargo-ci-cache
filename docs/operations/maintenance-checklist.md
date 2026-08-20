@@ -11,6 +11,7 @@ Use this checklist when refreshing the archive or copying its examples into a li
 
 - Check current GitHub-owned action majors for `actions/checkout`, `actions/cache`, `actions/upload-artifact`, and `actions/download-artifact`.
 - Keep non-GitHub actions intentionally pinned or floating by policy. For example, this archive keeps `Swatinem/rust-cache@v2` and `dtolnay/rust-toolchain@stable` because those are the intended upstream interfaces.
+- Re-check the released `runs-on/action@v2` metadata, `Mozilla-Actions/sccache-action`, and the selected `sccache` binary version before changing the compiler-cache or sticky-disk examples.
 - Re-check `jdx/mise-action` inputs and cache-key behavior when changing mise setup examples.
 - Re-check where inline `mise_toml` is written and where later build steps run; config discovery is path-sensitive.
 - Run `actionlint examples/workflows/*.yml` when `actionlint` is available.
@@ -19,19 +20,28 @@ Use this checklist when refreshing the archive or copying its examples into a li
 ## Cargo Cache Semantics
 
 - Re-check `Swatinem/rust-cache` release notes before changing the recommendation, especially around target keys, `cache-workspace-crates`, incremental state, and save cleanup behavior.
+- Re-check whether the input-only post step still traverses configured target directories on an eligible save even though `cache-targets: false` excludes them from the archive.
 - Re-check the official [Cargo checksum freshness documentation](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#checksum-freshness) and [tracking issue](https://github.com/rust-lang/cargo/issues/14136) before changing source-mtime guidance.
 - Keep the source-keyed target-cache workaround documented until upstream target keys include workspace source state or an equivalent mechanism exists.
-- When using source-keyed target caches, include build-command semantics in the target key, for example `locked-v1-<source-hash>`, and bump the namespace after changing build flags, target triples, profiles, features, or wrappers.
+- When using source-keyed target caches, hash source state with the resolved `rustc -Vv` identity, include a manual namespace for remaining build-command semantics, for example `locked-v1-<source-and-compiler-hash>`, and bump the namespace after changing build flags, target triples, profiles, features, or wrappers.
+- Do not add a source-independent fallback for a full target archive. Use separate restore/save actions when one trusted canonical writer is required.
 - Also bump the target-key namespace after changing setup semantics that affect Cargo's environment, such as moving `MISE_DATA_DIR`, `MISE_RUSTUP_HOME`, cached worktrees, cached target directories, switching from Rust/Zig installer actions to mise, or changing Cargo helper installation backends.
 - Prefer `--locked` for CI artifact builds. Do not switch to `--frozen` / `--offline` with `rust-cache` unless complete local registry/index state is known to be restored.
 - Prefer `mise-action` with inline `mise_toml` for stable setup tools such as Zig, Rust targets, `cargo-lambda`, `trunk`, and `cargo-binstall`; do not rely on `rust-cache cache-bin=true` as the only cache for those tools when setup time matters.
 - Prefer a cached source worktree under `$GITHUB_WORKSPACE`, such as `cached-worktree/app`, so mise can discover `$GITHUB_WORKSPACE/mise.toml` without `MISE_OVERRIDE_CONFIG_FILENAMES`.
 - Do not add `depends = ["rust", "cargo-binstall"]` to Cargo-backed mise tools as a workaround for shim/config discovery failures. Fix the config path instead.
 - Preserve the [canonical compatibility rule](../concepts/cargo-path-coverage.md#compatibility-rule-canonical) against mixing full filesystem snapshots with `rust-cache` on the same `target/` or `$CARGO_HOME` paths.
+- For every whole-target archive, record compressed bytes, target bytes, file count, restore/save time, and exact/partial hit state. Save restrictions, larger capacity, shorter retention, and key rotation do not prune the active object.
 
 ## Platform Guidance
 
-- Keep selected RunsOn Magic Cache guidance and its current-version checks in [`docs/deployments/runs-on/README.md`](../deployments/runs-on/README.md).
+- Keep RunsOn Magic Cache, direct S3 `sccache`, sticky-disk, support-transition, and current-version checks in [`docs/deployments/runs-on/README.md`](../deployments/runs-on/README.md).
+- Verify the RunsOn stack is v3.2.0 or newer before testing sticky disks.
+- Set `sticky_wait_timeout` explicitly while the documentation and released action metadata disagree on the default.
+- Re-check sticky lineage, default-branch fallback, concurrency, inactive expiry, free-space/inode warnings, automatic reset, and failure/cancellation behavior.
+- Treat Magic Cache protocol isolation and direct S3 IAM as separate boundaries. `SCCACHE_S3_RW_MODE=READ_ONLY` is not a substitute for an IAM-enforced read-only runner role.
+- Confirm lifecycle and inventory against the actual RunsOn S3 backend; do not assume GitHub cache API commands expose every third-party backend object.
+- Keep the RunsOn v3 migration separate from a Rust cache canary, with a parallel-stack test and an explicit rollback path.
 
 ## Archived AWS Experiments
 

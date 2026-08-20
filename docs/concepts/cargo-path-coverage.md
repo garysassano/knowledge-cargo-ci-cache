@@ -48,12 +48,26 @@ removes pre-existing cargo bin entries
 
 An EBS snapshot preserves the mounted filesystem subtree. If the path is under the snapshot root and was not removed before the post step, it is saved.
 
+## Other Coverage Models
+
+| Approach | `$CARGO_HOME/registry` and Git | `target/` at job start | Compiler-output reuse |
+| --- | --- | --- | --- |
+| No Rust cache | Downloaded normally | Clean | None |
+| Input-only `rust-cache` | Restored and cleaned | Clean | None |
+| S3-backed `sccache` with clean target | Optional separate input cache | Clean | Eligible compiler invocations only |
+| RunsOn sticky `rust` mode | Native persistent registry and Git paths | Clean unless separately configured | None |
+| RunsOn sticky custom target | Optional sticky Cargo inputs | Native persistent target path | Full target state, subject to Cargo freshness and disk lifecycle |
+
+`sccache` does not restore Cargo fingerprints or a ready target tree. It materializes outputs in response to compiler calls while Cargo still traverses and orchestrates the graph.
+
+RunsOn's built-in sticky `rust` mode covers Cargo registry and Git inputs only. Persisting `target/` requires a custom sticky path and makes the sticky disk the sole owner of that target state.
+
 ## Choosing Coverage
 
 | State | Preferred coverage | Why |
 | --- | --- | --- |
-| `target/` | `rust-cache` for the selected default; add the source-keyed full-target cache only when measured rebuilds justify it | Cargo freshness depends on artifacts, dep-info, fingerprints, build script outputs, and stable filesystem metadata. |
-| `$CARGO_HOME/registry`, `$CARGO_HOME/git` | `rust-cache` | These are dependency download and source inputs that `rust-cache` is designed to manage. |
+| `target/` | Clean by default; add `sccache` for compiler outputs, or use a tightly bounded exact target archive/sticky target only after measurement | A clean target avoids archive growth. Full target persistence has stronger no-op potential but also carries filesystem growth and freshness state. |
+| `$CARGO_HOME/registry`, `$CARGO_HOME/git` | Input-only `rust-cache`, sticky Cargo-input mode, or no cache according to measured setup cost | These paths avoid dependency downloads but do not reuse compilation. |
 | `$XDG_CACHE_HOME/cargo-zigbuild` | Explicit `actions/cache` entry if preserving the helper cache is worthwhile | This is Cargo-helper state outside Cargo home and `target/`. |
 | Trunk tool cache | Custom AMI, setup-action cache, or explicit `actions/cache` entry | Trunk downloads helper tools outside Cargo target state. Cache these paths separately if their setup time matters. |
 | Cargo-installed helper binaries | Custom AMI or setup-action cache preferred | These are setup state, not freshness proof; `rust-cache cache-bin` is limited to Cargo-registered installs and is not a complete tool-cache strategy. |
@@ -68,4 +82,4 @@ The archived EBS snapshot approach covers these paths with greater filesystem co
 
 This is the canonical statement of decision [D6](../decisions/README.md). Other pages reference it instead of restating it.
 
-Avoid combining `Swatinem/rust-cache` with a full Cargo build-state snapshot for the same `target/` or `$CARGO_HOME` paths. `rust-cache` restores and prunes an archive-oriented subset, while a snapshot depends on preserving filesystem continuity and mtimes. Mixing both for those paths can rewrite files, alter mtimes, and reduce the snapshot value for local no-op behavior.
+Avoid combining `Swatinem/rust-cache` target management with a sticky/full Cargo build-state owner for the same `target/`, or two mechanisms that both restore and clean the same `$CARGO_HOME` paths. `rust-cache` restores and prunes an archive-oriented subset, while sticky disks and snapshots depend on preserving filesystem continuity. Mixing owners can rewrite files, alter mtimes, reintroduce archive work, and reduce native-state reuse.

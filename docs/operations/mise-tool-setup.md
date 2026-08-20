@@ -75,16 +75,16 @@ Changing setup tooling can change Cargo's build semantics even when application 
 Example:
 
 ```yaml
-target-key: mise-locked-v1-${{ steps.app-source-key.outputs.hash }}
+target-key: mise-locked-v2-${{ steps.target-key.outputs.hash }}
 ```
 
-The first run after a namespace bump should seed the new target cache. The immediate follow-up run is the one that should prove warm no-op behavior.
+The computed target hash should include source state and the resolved `rustc -Vv` identity as shown in the [source-keyed target-cache approach](../approaches/rust-cache-source-keyed-target-cache.md). The first run after a namespace bump should seed the new target cache. The immediate follow-up run is the one that should prove warm no-op behavior.
 
 ## What This Does Not Solve
 
 Mise setup caching makes tool installation fast. It does not by itself prove Cargo units fresh. Cargo no-op behavior still depends on source mtimes, target fingerprints, dep-info files, build-script outputs, registry source paths, and consistent build semantics.
 
-Keep using the selected Cargo cache approach, such as `Swatinem/rust-cache` with mtime-preserving checkout, and use a source-keyed target cache when affected local path workspace members repeatedly rebuild and justify the extra cache composition.
+Keep using the selected Cargo cache approach. If a measured narrow workload still justifies whole-target caching, use a source-keyed target cache only when affected local path workspace members repeatedly rebuild and justify the extra cache composition.
 
 ## Details
 

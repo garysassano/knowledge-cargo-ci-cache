@@ -8,7 +8,7 @@ This category owns stable explanations of Cargo's build-state model and the cach
 | --- | --- |
 | [Cargo Freshness Model](cargo-freshness-model.md) | Explains how Cargo decides whether a build unit is fresh or dirty. |
 | [Cargo Path Coverage](cargo-path-coverage.md) | Maps Cargo state paths to cache approaches. |
-| [Cache Primitives](cache-primitives.md) | Compares archive cache, filesystem snapshot, and network filesystem semantics. |
+| [Cache Primitives](cache-primitives.md) | Compares clean targets, archive caches, compiler-object caches, sticky disks, filesystem snapshots, and network filesystems. |
 | [`Swatinem/rust-cache` Behavior](rust-cache-behavior.md) | Explains relevant input defaults, save cleanup, workspace-crate handling, and exact-hit behavior. |
 
 ## Page Shape

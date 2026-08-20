@@ -16,7 +16,7 @@ Normal GitHub Actions checkout rewrote source mtimes. Cargo then saw local sourc
 
 The custom checkout restored a cached Git worktree, skipped checkout when `HEAD` already matched `GITHUB_SHA`, and otherwise checked out the new commit in place. Git rewrote changed files while unchanged files retained their previous mtimes.
 
-This removed the primary false invalidation and showed that the default approach can produce a Cargo no-op. Most matrix jobs completed around 33 to 37 seconds, and a representative no-op Cargo step completed around 0.31 seconds. Local path workspace members in generated-code and build-script chains remained as 50 to 65 second outliers.
+This removed the primary false invalidation and showed that the then-current whole-target approach could produce a Cargo no-op. Most matrix jobs completed around 33 to 37 seconds, and a representative no-op Cargo step completed around 0.31 seconds. Local path workspace members in generated-code and build-script chains remained as 50 to 65 second outliers.
 
 ### Exact `rust-cache` Hit
 
@@ -82,12 +82,15 @@ Introducing `--locked` against an older source-only target key caused some works
 
 ## Implications
 
-- Use the mtime-preserving cached worktree as the default low-complexity fix.
-- Add the source-keyed full-target cache only when affected local path workspace members repeatedly rebuild and the cost is material.
+- Preserve source mtimes when a target/fingerprint cache is being evaluated; a clean-target design does not require this extra source cache.
+- Treat the source-keyed full-target cache as a freshness workaround, not proof that the archive is economical or size-bounded.
+- Use an exact source/build-state restore lineage rather than a broad fallback that can copy an older complete target tree forward.
+- Add the workaround only when affected local path workspace members repeatedly rebuild, repeated identical-source runs matter, and the complete archive remains small.
 - Keep the external workaround until upstream `rust-cache` exposes equivalent source-keyed target caching.
+- Compare it against the [clean-target](../approaches/clean-target.md) and [`sccache`](../approaches/sccache.md) approaches using end-to-end measurements.
 
 ## Related Guidance
 
-- [Recommended mtime-preserving approach](../approaches/rust-cache-mtime-checkout.md)
+- [Conditional mtime-preserving whole-target approach](../approaches/rust-cache-mtime-checkout.md)
 - [Source-keyed target-cache workaround](../approaches/rust-cache-source-keyed-target-cache.md)
 - [`rust-cache` behavior](../concepts/rust-cache-behavior.md)

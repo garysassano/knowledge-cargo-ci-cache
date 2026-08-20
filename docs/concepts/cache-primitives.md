@@ -1,6 +1,6 @@
 # Cache Primitives
 
-Cargo CI caching experiments used three different storage primitives. They are not interchangeable, even when they all make a later build faster.
+Cargo CI caching experiments used several different storage primitives. They are not interchangeable, even when they all make a later build faster.
 
 ## Archive Cache
 
@@ -10,7 +10,7 @@ Examples:
 - An `actions/cache`-compatible backend
 - `Swatinem/rust-cache`, which builds on top of archive cache semantics
 
-Changing the backend used by `actions/cache` does not change archive-cache semantics. The restored state is still selected by a key, downloaded, and extracted into the current filesystem. It is not equivalent to a mounted filesystem snapshot. See the [RunsOn guide](../deployments/runs-on/README.md) for the selected backend implementation.
+Changing the backend used by `actions/cache` does not change archive-cache semantics. The restored state is still selected by a key, downloaded, and extracted into the current filesystem. It is not equivalent to a mounted filesystem snapshot. See the [RunsOn deployment map](../deployments/runs-on/README.md) for platform-specific implementations.
 
 Archive cache behavior:
 
@@ -37,6 +37,34 @@ Limitations:
 - The cache key decides whether a new archive can be saved.
 - Archive tools and cache actions may not preserve all metadata exactly as a local filesystem would.
 - A cache action can clean or prune paths before save.
+
+## Compiler-Object Cache
+
+Example:
+
+- `sccache` with an S3 backend.
+
+Compiler-cache behavior:
+
+```text
+Cargo invokes compiler through wrapper
+compute key from compiler and invocation inputs
+fetch one matching output on hit
+compile and optionally store one output on miss
+```
+
+Best for:
+
+- Reusing unaffected compilation across changing commits.
+- Keeping `target/` disposable.
+- Avoiding monolithic target archive extraction and recompression.
+
+Limitations:
+
+- Cargo orchestration still runs.
+- Remote hits still perform many object operations.
+- Build scripts, linker-invoking crate types, and final linking remain local or non-cacheable.
+- Object-store lifecycle, namespace, IAM, and request cost need ownership.
 
 ## Filesystem Snapshot
 
@@ -66,6 +94,32 @@ Limitations:
 - More infrastructure and lifecycle complexity.
 - Credential-bearing files must be scrubbed before snapshot save.
 - Toolchains and tool caches can bloat snapshots if placed under the snapshot root.
+
+## Sticky Persistent Disk
+
+Example:
+
+- RunsOn sticky disks backed by EBS snapshots.
+
+Sticky-disk behavior:
+
+```text
+restore newest clean disk snapshot for a lineage
+attach and mount native filesystem
+build directly on the disk
+unmount and record a new clean snapshot
+```
+
+Best for:
+
+- Native Cargo-input persistence without tar archive serialization.
+- Experimental full target persistence when exact filesystem continuity is worth the lifecycle controls.
+
+Limitations:
+
+- A persistent target can still accumulate stale artifact generations.
+- Disk bytes, free space, free inodes, cleanup, reset, and concurrent last-writer behavior must be managed.
+- Platform-specific version and runner-label requirements apply.
 
 ## Network Filesystem
 
@@ -98,9 +152,10 @@ Limitations for Cargo target state:
 
 | Goal | Preferred primitive |
 | --- | --- |
-| Keep workflow simple and maintained | `mise-action` with `Swatinem/rust-cache` and mtime-preserving checkout |
-| Avoid dependency downloads | Archive cache / `rust-cache` |
-| Preserve source mtimes | Cached worktree or filesystem snapshot |
-| Preserve full local target state | Filesystem snapshot or source-keyed target archive |
+| Keep workflow simple and attributable | Clean target with no Rust cache or input-only `rust-cache` |
+| Avoid dependency downloads | Input-only archive cache or sticky Cargo-input disk |
+| Reuse compiler outputs across changing commits | S3-backed `sccache` |
+| Preserve source mtimes | Cached worktree, sticky workspace, or filesystem snapshot |
+| Preserve full local target state | Sticky/custom disk, filesystem snapshot, or tightly bounded source-keyed target archive |
 | Cache setup tools and toolchains | Archive cache through `mise-action` |
 | Share state across workers without archives | Network filesystem, but not ideal for Cargo target no-op |

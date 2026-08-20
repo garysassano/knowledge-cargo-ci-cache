@@ -6,27 +6,31 @@ Use this page when you want the current answer without reading the full archive.
 
 For GitHub Actions Rust builds, start with:
 
-- Mtime-preserving cached worktree.
-- `Swatinem/rust-cache` with `cache-workspace-crates: true`.
-- Explicit stable `CARGO_TARGET_DIR`.
-- `mise-action` for Rust-adjacent tool setup.
+- A clean local `target/`.
+- RunsOn Magic Cache with input-only `Swatinem/rust-cache` as the pragmatic default when RunsOn is available.
+- No Rust cache as the paired control.
+- `CARGO_INCREMENTAL=0` for a later `sccache` comparison.
+- `mise-action` when repeated Rust, Zig, or helper-tool setup is material.
 
-This is the maintained, low-complexity path that can produce warm Cargo no-op builds. The canonical decision record is [Decisions](decisions/README.md).
+This shape is low-risk because it keeps tool setup and dependency downloads reusable without persisting mutable target state. Prefer no Rust cache when input-only setup is effectively tied with normal dependency downloads. For frequently changing PR workloads, canary S3-backed `sccache` in default server mode without a separate Cargo-input archive by default; add that archive only when dependency-download timing justifies it. The canonical decision record is [Decisions](decisions/README.md).
 
 ## Copy The Right Shape
 
 | Need | Use |
 | --- | --- |
-| Selected RunsOn deployment | [RunsOn Magic Cache](deployments/runs-on/README.md) and [`runs-on-mise-rust-cache.yml`](../examples/workflows/runs-on-mise-rust-cache.yml) |
-| Provider-neutral Cargo cache | [`Swatinem/rust-cache` with mtime-preserving checkout](approaches/rust-cache-mtime-checkout.md) and [`rust-cache-mtime-checkout.yml`](../examples/workflows/rust-cache-mtime-checkout.yml) |
+| Clean RunsOn target with optional Cargo-input cache | [RunsOn Deployment Map](deployments/runs-on/README.md) and [`runs-on-mise-rust-cache.yml`](../examples/workflows/runs-on-mise-rust-cache.yml) |
+| Direct S3 compiler-cache canary | [S3-Backed `sccache`](approaches/sccache.md) and [`runs-on-sccache-canary.yml`](../examples/workflows/runs-on-sccache-canary.yml) |
+| RunsOn sticky-input or sticky-target canary after v3.2 | [Sticky-Disk Options](deployments/runs-on/README.md#sticky-disk-options) |
+| Conditional whole-target archive | [`Swatinem/rust-cache` with mtime-preserving checkout](approaches/rust-cache-mtime-checkout.md) and [`rust-cache-mtime-checkout.yml`](../examples/workflows/rust-cache-mtime-checkout.yml) |
 | Tool setup with Rust, Zig, `cargo-lambda`, or Trunk | [Mise Tool Setup](operations/mise-tool-setup.md) |
+| Phase-level cache and runner comparison | [Measuring Cache Performance](operations/measuring-cache-performance.md) |
 | Rebuild diagnosis | [Diagnosing Cargo Rebuilds In CI](operations/diagnosing-rebuilds.md) |
 
 ## When To Escalate
 
-Use the [source-keyed full-target cache workaround](approaches/rust-cache-source-keyed-target-cache.md) only when measured logs show affected local path workspace members repeatedly rebuilding on exact `rust-cache` hits and the rebuild cost is material.
+Use a whole-target archive only when a narrow stable workload has exact source/build lineage, one trusted writer, no broad target fallback, and a small monitored archive whose restore/save is cheaper than recompilation.
 
-Do not use S3 Files for Cargo target no-op state based on this archive's experiments. Keep EBS/filesystem snapshots as an archived alternative for cases where maximum filesystem fidelity matters more than lifecycle complexity.
+After RunsOn v3.2, test sticky Cargo inputs before a custom sticky target. Keep EBS/filesystem snapshots as the highest-fidelity archived alternative when lifecycle complexity is acceptable. Do not use S3 Files for Cargo target no-op state based on this archive's experiments.
 
 ## Mental Model
 

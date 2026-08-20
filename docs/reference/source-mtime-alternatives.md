@@ -1,6 +1,6 @@
 # Source Mtime Alternatives
 
-This page preserves related source-mtime approaches that informed the selected [`Swatinem/rust-cache` with mtime-preserving checkout](../approaches/rust-cache-mtime-checkout.md) approach. These approaches address source checkout mtime churn, but they are not equivalent to the [source-keyed target-cache workaround](../approaches/rust-cache-source-keyed-target-cache.md).
+This page preserves source-mtime approaches relevant to conditional whole-target reuse, including [`Swatinem/rust-cache` with mtime-preserving checkout](../approaches/rust-cache-mtime-checkout.md). They address checkout mtime churn, but they are not equivalent to the [source-keyed target-cache workaround](../approaches/rust-cache-source-keyed-target-cache.md).
 
 ## Comparison
 
@@ -49,4 +49,3 @@ This directly addresses source files receiving new mtimes during checkout, but i
 - It does not change `rust-cache` target-key or exact-hit save behavior.
 
 Follow the official [tracking issue `cargo#14136`](https://github.com/rust-lang/cargo/issues/14136) for stabilization and build-script coverage. The original implementation is [`cargo#14137`](https://github.com/rust-lang/cargo/pull/14137).
-

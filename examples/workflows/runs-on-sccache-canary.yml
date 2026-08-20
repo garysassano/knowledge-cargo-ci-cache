@@ -1,0 +1,52 @@
+name: RunsOn Sccache Canary
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: runs-on=${{ github.run_id }}-sccache/cpu=16/image=ubuntu24-full-x64/extras=s3-cache
+
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+
+    steps:
+      # Exports the S3 backend variables and RUSTC_WRAPPER=sccache.
+      - name: Export RunsOn S3 sccache environment
+        uses: runs-on/action@v2
+        with:
+          sccache: s3
+
+      # Override only RunsOn's default stack-wide cache/sccache prefix.
+      - name: Override RunsOn sccache namespace
+        shell: bash
+        run: echo "SCCACHE_S3_KEY_PREFIX=cache/sccache/${GITHUB_REPOSITORY_ID}/${RUNNER_OS}-${RUNNER_ARCH}/rust-v1" >> "$GITHUB_ENV"
+
+      # RunsOn configures the backend but does not install the executable.
+      - name: Install pinned sccache executable
+        uses: Mozilla-Actions/sccache-action@v0.0.11
+        with:
+          version: v0.17.0
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Reset Sccache Statistics
+        run: sccache --zero-stats
+
+      - name: Cargo Check
+        run: cargo check --workspace --all-targets --locked
+
+      - name: Show Sccache Statistics
+        if: always()
+        run: sccache --show-stats

@@ -29,7 +29,7 @@ runs:
   using: composite
   steps:
     - name: Cache S3 Files client installer artifacts
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.cache/s3-files-mount
         key: s3-files-mount-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-suffix }}-${{ inputs.cache-version }}

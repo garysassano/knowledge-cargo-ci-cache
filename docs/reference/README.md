@@ -4,9 +4,11 @@ This section keeps dense technical details that are useful for maintenance, revi
 
 | Page | Purpose |
 | --- | --- |
+| [Cache Measurement JSONL Schema](cache-measurement-schema.md) | Machine-readable run, phase, metric, and resource-sample records for cache experiments. |
 | [Cargo Freshness Signals](cargo-freshness-signals.md) | Detailed Cargo freshness table, path notes, local target examples, dep-info example, and fingerprint example. |
 | [Mise Tool Setup Details](mise-tool-setup-details.md) | Detailed `mise-action` environment behavior, config discovery notes, diagram, historical failure, and upstream references. |
-| [RunsOn Magic Cache Details](runson-magic-cache-details.md) | RunsOn cache ownership and backend/job-sequence diagrams. |
+| [RunsOn Cache And Disk Details](runson-cache-and-disk-details.md) | Archive, direct S3 compiler-cache, sticky-disk, snapshot, lifecycle, and trust-boundary details. |
 | [Source Mtime Alternatives](source-mtime-alternatives.md) | Related source-mtime approaches, Retimer evidence, and Cargo checksum-freshness notes. |
+| [Vendor Rust And CI Cache Sources](vendor-ci-cache-sources.md) | Maintained catalog of first-party Rust, `sccache`, and GitHub Actions cache material from runner and build-platform vendors. |
 
 Use these pages as supporting detail. Current recommendations still live in [Decisions](../decisions/README.md), approach selection lives in [Approaches](../approaches/README.md), and measured results live in [Evidence](../evidence/README.md).

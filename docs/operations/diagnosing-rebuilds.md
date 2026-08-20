@@ -66,7 +66,7 @@ Cargo needs more than final binaries. It also needs dep-info, fingerprints, buil
 
 Fixes:
 
-- Use the source-keyed full-target cache when dependency-oriented target cleanup repeatedly removes required workspace state.
+- If a measured narrow whole-target workload justifies it, use the source-keyed full-target workaround when dependency-oriented target cleanup repeatedly removes required workspace state.
 - Avoid cache cleanup that removes workspace target artifacts.
 
 ### Build Script Reruns
@@ -87,7 +87,7 @@ If extracted registry sources are missing, Cargo may recreate them from crate ar
 Fixes:
 
 - Accept it for dependency-oriented caching.
-- Use the source-keyed target-cache workaround when the missing state causes material repeated rebuilds.
+- Consider the source-keyed target-cache workaround only when the missing state causes material repeated rebuilds and full-archive economics remain acceptable.
 
 ### Cache Key Does Not Include Source State
 
@@ -95,7 +95,7 @@ If a target cache key ignores workspace source contents, a cache can restore sta
 
 Fixes:
 
-- Use source-keyed target cache as a workaround.
+- Use a source-keyed target cache only as the narrow workaround described in the [approach page](../approaches/rust-cache-source-keyed-target-cache.md).
 - Ask cache action maintainers for source-keyed target-cache support.
 
 ## Triage Checklist

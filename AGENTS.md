@@ -13,8 +13,9 @@ Use the routing table below to load only the pages relevant to the task instead 
 | See superseded or revised conclusions | `docs/decisions/history.md` |
 | Understand documentation ownership | `docs/README.md` |
 | Choose or compare cache approaches | `docs/approaches/README.md` |
-| Apply the selected RunsOn Magic Cache deployment | `docs/deployments/runs-on/README.md` |
+| Choose or apply a RunsOn cache/disk deployment | `docs/deployments/runs-on/README.md` |
 | Configure fast CI tool setup | `docs/operations/mise-tool-setup.md` |
+| Measure cache phases and runner bottlenecks | `docs/operations/measuring-cache-performance.md` |
 | Explain Cargo freshness/no-op behavior | `docs/concepts/cargo-freshness-model.md` |
 | Map Cargo state paths to cache coverage | `docs/concepts/cargo-path-coverage.md` |
 | Explain cache primitives | `docs/concepts/cache-primitives.md` |
@@ -22,6 +23,8 @@ Use the routing table below to load only the pages relevant to the task instead 
 | Diagnose rebuilds | `docs/operations/diagnosing-rebuilds.md` |
 | Review measured evidence | `docs/evidence/README.md` |
 | Read detailed freshness signals, examples, or historical notes | `docs/reference/README.md` |
+| Review vendor Rust, `sccache`, or GitHub Actions cache sources | `docs/reference/vendor-ci-cache-sources.md` |
+| Record machine-readable cache measurements | `docs/reference/cache-measurement-schema.md` |
 | Refresh examples and assumptions | `docs/operations/maintenance-checklist.md` |
 | Copy workflow shapes | `examples/README.md` and `examples/workflows/` |
 | Understand the local snapshot fork | `examples/actions/snapshot/README.md` |
@@ -42,7 +45,8 @@ Treat the conclusions as archived, not as timeless upstream facts. Before changi
 - Keep diagnostic procedures in `docs/operations/diagnosing-rebuilds.md`.
 - Keep `Swatinem/rust-cache` input and cleanup semantics in `docs/concepts/rust-cache-behavior.md`.
 - Keep dense technical details, long tables, historical notes, and official-reference collections in `docs/reference/` when they would make first-read pages heavy.
-- Keep RunsOn runner, Magic Cache, and S3 backend guidance in `docs/deployments/runs-on/README.md`, and keep generic Cargo guidance out of it; the deployment links to the canonical approach, concept, and operation pages instead of copying their configuration.
+- Keep RunsOn runner, Magic Cache, direct S3 `sccache`, and sticky-disk guidance in `docs/deployments/runs-on/README.md`, and keep generic Cargo guidance out of it; the deployment links to the canonical approach, concept, and operation pages instead of copying their configuration.
+- Keep sanitized measurement records as JSONL in `docs/evidence/data/` beside the evidence page that cites them; keep the record contract in `docs/reference/cache-measurement-schema.md` and the copyable synthetic example in `examples/measurements/`.
 - Keep copyable workflow examples in `examples/workflows/`.
 - Link to canonical pages instead of repeating long tables or result summaries.
 
@@ -70,6 +74,8 @@ When editing workflow examples:
 - Check current GitHub-owned action majors for `actions/checkout`, `actions/cache`, `actions/upload-artifact`, and `actions/download-artifact`.
 - Keep `jdx/mise-action@v4`, `Swatinem/rust-cache@v2`, and `dtolnay/rust-toolchain@stable` unless there is a deliberate reason to change them.
 - Preserve source-keyed target cache ordering: restore `rust-cache` first with `cache-targets: false`, then restore the full target cache.
+- Preserve resolved compiler identity in source-keyed target keys by hashing `rustc -Vv` with source state.
+- Do not add a broad target `restore-keys` fallback to source-keyed target examples; use one trusted target-cache writer.
 - Preserve the generic nature of examples; do not add app-specific package names, secrets, runner labels, or deployment steps unless a page explicitly documents them as examples.
 
 ## Validation

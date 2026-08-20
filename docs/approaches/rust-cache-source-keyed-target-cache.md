@@ -4,9 +4,9 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Proven workaround |
-| Use when | Affected local path workspace members repeatedly rebuild and are expensive enough to justify custom cache composition. |
-| Main tradeoff | More workflow logic, broader invalidation, and strict restore ordering. |
+| Status | Narrow exception; freshness behavior proven, growth safety requires separate measurement |
+| Use when | Affected local path workspace members repeatedly rebuild, repeated identical-source runs matter, and a small exact source-keyed target archive is justified. |
+| Main tradeoff | Full-target serialization, strict restore ordering, broad source invalidation, and immutable-object storage. |
 
 ## Related Files
 
@@ -26,7 +26,7 @@ When the restored key is exact, `rust-cache` reports `Cache up-to-date` in its p
 cached worktree checkout preserves unchanged source mtimes
 Swatinem/rust-cache restores Cargo home only with cache-targets: false
 actions/cache restores full target directory after rust-cache
-target cache key includes source state
+target cache key and restore lineage include source state
 Cargo builds with explicit CARGO_TARGET_DIR
 ```
 
@@ -70,7 +70,7 @@ flowchart TD
     clean_home --> rust_cache
 ```
 
-The full target archive restores after `rust-cache`, so `rust-cache` cannot prune workspace artifacts from it before the build. Its key includes source state, allowing a changed source tree to seed a new target archive instead of reusing an immutable stale exact hit indefinitely.
+The full target archive restores after `rust-cache`, so `rust-cache` cannot prune workspace artifacts from it before the build. Its key and fallback lineage include source state, so another source version's target tree is not restored and copied into the new object.
 
 ## Critical Ordering
 
@@ -101,27 +101,34 @@ The incorrect ordering allowed `rust-cache` target cleanup to remove workspace t
 
 ## Key Strategy
 
-The final workaround used a fast Git source key:
+The final workaround used a fast Git source key combined with the exact compiler identity:
 
 ```bash
-hash="$({ git rev-parse HEAD:app; git ls-files -s app; } | sha256sum | cut -d ' ' -f1)"
+hash="$({
+  git rev-parse HEAD:app
+  git ls-files -s app
+  rustc -Vv
+} | sha256sum | cut -d ' ' -f1)"
 ```
 
 Tradeoff:
 
 - Any tracked change under `app` invalidates all per-job target caches for that source hash.
+- A change to the resolved compiler invalidates the target cache even when a moving toolchain channel such as `stable` is used.
 - The computation is fast and simple.
-- Restore prefixes still allow each job to restore its previous target cache as a starting point.
+- The safe current shape does not use a broad fallback across source hashes. A changed source state starts clean.
 
 An intermediate dependency-closure key using `cargo metadata` was more precise, but it added about a minute per job in CI and was too expensive.
 
-The source key should include a small manual namespace for build-command semantics:
+The key should also include a small manual namespace for build-command semantics not represented by the source and compiler hash:
 
 ```yaml
-target-key: locked-v1-${{ steps.source-key.outputs.hash }}
+target-key: locked-v1-${{ steps.target-key.outputs.hash }}
 ```
 
-Increment the namespace when changing build flags, target triples, Cargo features, profiles, compiler wrappers, setup backends, toolchain locations, cached target directories, or other options that can affect Cargo fingerprints. If the command or setup shape changes but the target key does not, Cargo may rebuild against an exact target-cache hit and the cache action will correctly skip saving because the key was exact.
+Increment the namespace when changing build flags, target triples, Cargo features, profiles, compiler wrappers, setup backends, toolchain locations, cached target directories, or other options that can affect Cargo fingerprints. The `rustc -Vv` input covers the resolved compiler version and host, but not every build/setup choice. If the command or setup shape changes but the target key does not, Cargo may rebuild against an exact target-cache hit and the cache action will correctly skip saving because the key was exact.
+
+Do not use a restore prefix that omits the source/build namespace. That historical shape can restore an older complete target tree, add another artifact generation, and save the combined tree under a new immutable key. Source keying fixes stale exact-hit freshness only when the restore lineage is equally strict.
 
 The repeated outliers this fixed were local path workspace members in generated-code/build-script chains. Tight `cargo:rerun-if-changed` hints are still good build-script hygiene, but they do not fix stale exact target-cache restores when the target cache key ignores workspace source state.
 
@@ -145,15 +152,19 @@ This validates the native action design, but the copyable workaround in this pag
 
 ## Limitations
 
-The workaround adds custom cache composition and ordering constraints. It is correct and proven, but it is more workflow logic to own.
+The workaround adds custom cache composition, target-archive cost, and ordering constraints. Its Cargo freshness behavior is proven, but its archive economics must be measured for each workload.
 
 - Any tracked source change under the selected tree invalidates the per-job target key.
 - Restore ordering is mandatory.
 - The current copyable implementation needs a second cache action.
+- Changed source states compile from a clean target when broad fallback is disabled.
+- Repeated source states still extract and may save the complete target archive.
+- Immutable target objects consume storage until backend lifecycle expiry.
+- Cleanup and size limits are external operational responsibilities.
 
 ## Evidence
 
-The [cached worktree and source-keyed target-cache evidence](../evidence/cached-worktree-and-target-cache.md) records the exact-hit cycle, ordering tests, measured no-op results, native `target-key` prototype, and key-namespace lesson.
+The [cached worktree and source-keyed target-cache evidence](../evidence/cached-worktree-and-target-cache.md) records the exact-hit cycle, ordering tests, measured no-op results, native `target-key` prototype, and key-namespace lesson. The [target archive growth evidence](../evidence/target-archive-growth.md) explains why source-keyed archives still need exact restore lineages and size guardrails, and the [cache strategy benchmarks](../evidence/cache-strategy-benchmarks.md) supply the end-to-end comparison against clean targets.
 
 ## Decision
 
@@ -161,6 +172,7 @@ Use this workaround if:
 
 - Affected local path workspace members repeatedly rebuild on exact `rust-cache` hits.
 - Those rebuilds are expensive enough to justify custom cache composition.
-- A fork/adapter is warranted because upstream does not support the use case.
+- Repeated runs of the same source state are common enough to pay for full archive restore.
+- The archive remains small, exact-keyed, and monitored.
 
-Retire or simplify this workaround if upstream `rust-cache` adds equivalent source-keyed target caching.
+Do not use it as a general PR cache with a broad source-independent restore prefix. Retire or simplify it if upstream `rust-cache` adds equivalent source-keyed target caching, or if clean `target/` with [`sccache`](sccache.md) wins the end-to-end comparison.

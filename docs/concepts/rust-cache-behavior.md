@@ -1,6 +1,6 @@
 # `Swatinem/rust-cache` Behavior
 
-This page documents the `Swatinem/rust-cache@v2` behavior that matters to the approaches in this archive. It is not a replacement for the upstream input reference; it explains how selected inputs affect restored and saved Cargo state.
+This page documents the released `Swatinem/rust-cache@v2` behavior that matters to the approaches in this archive. It is not a replacement for the upstream input reference; it explains how selected inputs affect restored and saved Cargo state. The current-version notes were checked on August 20, 2026, when `@v2` resolved to v2.9.2.
 
 ## Restore And Save Are Different
 
@@ -15,6 +15,29 @@ target/<profile>/deps/
 ```
 
 This is dependency-oriented caching, not a complete target snapshot.
+
+## Exact And Fallback Key Lifecycle
+
+The action builds:
+
+```text
+restore key = prefix, optional shared/job key, OS/architecture, Rust/environment hash
+exact key   = restore key with a Cargo manifest/lock/config hash suffix
+```
+
+On an exact miss, the cache backend may restore the newest object matching the broader restore key. A lockfile or manifest change can therefore produce:
+
+```text
+exact key changes
+restore key remains the same
+older target archive is restored
+Cargo adds artifacts for the new graph/configuration
+the complete combined archive is saved under the new exact key
+```
+
+This copy-forward behavior is useful when the old target is a compact incremental starting point. It is dangerous when old hashed artifact generations remain and the complete archive grows faster than cleanup removes them.
+
+To prevent fallback across a boundary, include that boundary in `shared-key` or `prefix-key`, because those inputs participate in the restore key. Putting identity only in files that contribute to the exact suffix does not stop fallback.
 
 ## Relevant Inputs
 
@@ -81,17 +104,27 @@ For retained packages, `v2` keeps matching entries under profile `build/`, `.fin
 
 ## Choosing Values
 
-For the recommended mtime-preserving checkout approach:
+For the recommended clean-target input-only baseline:
+
+```yaml
+cache-targets: false
+cache-bin: false
+```
+
+This caches Cargo registry and Git inputs without storing compiler output. It does not need source-mtime preservation because the target starts clean.
+
+For a conditional whole-target archive:
 
 ```yaml
 cache-targets: true
 cache-workspace-crates: true
 ```
 
-These two inputs describe the Cargo state the approach intends to reuse:
+These two inputs describe the broader Cargo state that approach intends to reuse:
 
 - Keep `cache-targets: true` because the approach needs target metadata and artifacts in addition to stable source mtimes. It is already the default, but writing it explicitly makes the architecture clear.
 - Use `cache-workspace-crates: true` when repeated-run reuse of workspace library artifacts is desired.
+- Put source/build identity in the restore lineage and monitor archive bytes, file count, restore time, and save time.
 
 Choose the remaining inputs from the other steps in the workflow:
 
@@ -100,7 +133,30 @@ Choose the remaining inputs from the other steps in the workflow:
 
 These decisions are independent of the `actions/cache` backend. GitHub's hosted cache service, RunsOn Magic Cache, and another compatible backend do not change what `rust-cache` selects or removes.
 
-These options do not guarantee a complete or current target snapshot. An exact cache hit is not replaced during the post step, and the target key does not include all workspace source contents. This can repeatedly restore stale workspace artifacts; use the source-keyed target-cache workaround when that is measurable.
+These options do not guarantee a complete or current target snapshot. An exact cache hit is not replaced during the post step, and the target key does not include all workspace source contents. This can repeatedly restore stale workspace artifacts; use the source-keyed target-cache workaround only when that is measurable and the resulting full archive remains bounded.
+
+One v2.9.2 implementation detail matters for input-only mode: on an eligible save after a miss or partial restore, the post step still calls target cleanup for each configured workspace even when `cache-targets: false`. The target path is omitted from the saved archive, but traversal can still occur. `save-if: false` and exact hits skip the post-save path. Measure this residual work and use no Rust cache or an explicit Cargo-home-only cache if it is material.
+
+## Cleanup Is Not A Size Bound
+
+The target cleanup performs useful work:
+
+- Removes profile-root files.
+- Retains package-matching entries under `build`, `.fingerprint`, and `deps`.
+- Removes packages no longer present in the selected dependency graph.
+- Disables and removes incremental state.
+
+It does not:
+
+- Enforce a byte or file-count budget.
+- Keep only one artifact generation per package.
+- Determine which hash matches the currently active version, features, compiler flags, or fingerprint.
+- Replace an exact hit with target state rebuilt during the job.
+- Prevent a partial restore from being copied into the next immutable object.
+
+In one production lineage, the compressed archive grew from about 206 MB to 13.89 GB in under five days. See [Target Archive Growth In Production](../evidence/target-archive-growth.md).
+
+Upstream [PR #377](https://github.com/Swatinem/rust-cache/pull/377) corrects the partial-restore age sweep so it checks every immediate entry rather than stopping after the first. As of August 20, 2026 it is merged on the upstream default branch but is not in v2.9.2 or the `v2` tag. The change retains the existing one-week threshold and does not add recursive generation-aware pruning or a size limit; the observed growth completed inside that one-week window.
 
 ## Tool Example: taiki-e Prebuilt Tools
 

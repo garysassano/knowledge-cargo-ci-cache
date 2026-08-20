@@ -1,4 +1,4 @@
-name: Rust Cache Mtime Checkout
+name: Conditional Whole Target Rust Cache
 
 on:
   workflow_dispatch:
@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      CARGO_INCREMENTAL: "0"
       LOCAL_WORKSPACE: /tmp/example-workspace
       LOCAL_CARGO_TARGET_DIR: /tmp/example-cargo-target
 
@@ -23,13 +24,13 @@ jobs:
 
     steps:
       - name: Checkout workflow actions
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: |
             examples/actions/cached-worktree-checkout
 
       - name: Restore cached worktree
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ env.LOCAL_WORKSPACE }}
           key: workspace-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
@@ -56,7 +57,12 @@ jobs:
           cache-targets: true
           # Also retain matching target artifacts for workspace members such as crates/common.
           cache-workspace-crates: true
-          shared-key: example-target-v1
+          cache-bin: false
+          cache-all-crates: false
+          # Put exact source and build-command identity in the fallback lineage.
+          shared-key: example-target-release-locked-v2-${{ github.sha }}
+          # Adapt the branch name if the repository's trusted default branch is not main.
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Build
         env:

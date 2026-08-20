@@ -1,4 +1,4 @@
-name: RunsOn Mise Rust Cache
+name: RunsOn Mise Input Cache
 
 on:
   workflow_dispatch:
@@ -14,43 +14,21 @@ jobs:
     runs-on: runs-on=${{ github.run_id }}-cargo/cpu=16/image=ubuntu24-full-x64/extras=s3-cache
 
     env:
-      CACHED_WORKTREE: ${{ github.workspace }}/cached-worktree
-      CACHED_CARGO_TARGET_DIR: ${{ github.workspace }}/cached-cargo-target
+      CARGO_INCREMENTAL: "0"
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
       MISE_DATA_DIR: ${{ github.workspace }}/.mise
       MISE_RUSTUP_HOME: ${{ github.workspace }}/.mise/rustup
 
     defaults:
       run:
-        working-directory: ${{ github.workspace }}/cached-worktree/app
+        working-directory: ${{ github.workspace }}/app
 
     steps:
       - name: Setup RunsOn Magic Cache
         uses: runs-on/action@v2
 
-      - name: Checkout Workflow Actions
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            examples/actions/cached-worktree-checkout
-
-      - name: Restore Cached Worktree
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.CACHED_WORKTREE }}
-          key: workspace-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
-          restore-keys: |
-            workspace-${{ runner.os }}-${{ runner.arch }}-${{ github.ref_name }}-
-
-      - name: Checkout Cached Worktree
-        uses: ./examples/actions/cached-worktree-checkout
-        with:
-          path: ${{ env.CACHED_WORKTREE }}
-          sparse-paths: app
-
-      - name: Configure Cargo Target
-        run: mkdir -p "$CACHED_CARGO_TARGET_DIR"
-
-      # Configure private Cargo registry credentials here when required.
+      - name: Checkout
+        uses: actions/checkout@v7
 
       - name: Setup Toolchain And Tools
         uses: jdx/mise-action@v4
@@ -65,19 +43,18 @@ jobs:
             # "cargo:cargo-lambda" = "1.9.1"
             # "cargo:trunk" = "0.21.14"
 
-      - name: Cache Cargo Dependencies And Target
+      # Configure private Cargo registry credentials here when required.
+
+      - name: Cache Cargo Registry And Git Inputs
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: ${{ env.CACHED_WORKTREE }}/app -> ../../cached-cargo-target
-          # Mise owns tools, so rust-cache does not retain unrelated tool crates or Cargo binaries.
+          workspaces: ./app
+          prefix-key: rust-inputs-v1
           cache-all-crates: false
           cache-bin: false
-          # Cargo freshness needs target state, including matching workspace-library artifacts.
-          cache-targets: true
-          cache-workspace-crates: true
-          shared-key: app-release-v1
+          cache-targets: false
+          # Adapt the branch name if the repository's trusted default branch is not main.
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Build
-        env:
-          CARGO_TARGET_DIR: ${{ env.CACHED_CARGO_TARGET_DIR }}
         run: cargo build --workspace --release --locked

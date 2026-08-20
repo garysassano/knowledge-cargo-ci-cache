@@ -8,8 +8,8 @@ This page maps the repository's cache approaches onto RunsOn. It owns RunsOn run
 | --- | --- | --- | --- |
 | Establish a safe PR-CI baseline | Mise-managed tools, input-only `Swatinem/rust-cache` through Magic Cache, ephemeral local `target/`, and normal checkout | Recommended practical default; remove the input cache if it does not pay for itself | [`runs-on-mise-rust-cache.yml`](../../../examples/workflows/runs-on-mise-rust-cache.yml) |
 | Reuse compiler outputs across changing commits | Ephemeral local `target/` with direct S3 `sccache` in default server mode; omit a separate Cargo-input archive unless measured downloads justify it | Leading measured canary | [`runs-on-sccache-canary.yml`](../../../examples/workflows/runs-on-sccache-canary.yml) |
-| Persist Cargo registry and Git inputs without archives | RunsOn sticky disk with built-in `rust` mode | Test after RunsOn v3.2 upgrade | [`runs-on-sticky-disk-canary.yml`](../../../examples/workflows/runs-on-sticky-disk-canary.yml) |
-| Preserve a native target filesystem | Sticky disk with built-in `rust` mode and a custom target path | Higher-complexity fallback experiment | [`runs-on-sticky-disk-canary.yml`](../../../examples/workflows/runs-on-sticky-disk-canary.yml) |
+| Persist Cargo registry and Git inputs without archives | RunsOn sticky disk with built-in `rust` mode | Test after RunsOn v3.2 upgrade | [Sticky-Disk Options](#sticky-disk-options) |
+| Preserve a native target filesystem | Sticky disk with built-in `rust` mode and a custom target path | Higher-complexity fallback experiment | [Sticky-Disk Options](#sticky-disk-options) |
 | Repeat an exact, stable workload with a small target tree | Whole-target archive through Magic Cache with source/build identity in the restore lineage | Conditional narrow option | [`rust-cache-mtime-checkout.yml`](../../../examples/workflows/rust-cache-mtime-checkout.yml) |
 | Preserve a complete filesystem with explicit lifecycle ownership | Local EBS snapshot action and mounted snapshot root | Archived alternative | [`ebs-snapshot.yml`](../../../examples/workflows/ebs-snapshot.yml) |
 
@@ -133,7 +133,7 @@ Before enabling a custom target:
 - Test successful, failed, and cancelled jobs, disk wait failures, default-branch fallback, and reset behavior.
 - Keep the sticky disk as the sole owner of the target and Cargo-input paths it mounts.
 
-The dense lineage, fallback, expiry, free-space, and last-writer semantics are in [RunsOn Cache And Disk Details](../../reference/runson-cache-and-disk-details.md).
+The dense lineage, fallback, expiry, free-space, and last-writer semantics are in [RunsOn Cache And Disk Details](../../reference/runson-cache-and-disk-details.md). There is no committed canary workflow for this option yet; build one from the snippets above once the v3.2 upgrade lands, and commit it together with its first measurements.
 
 ## Conditional Whole-Target Archives
 

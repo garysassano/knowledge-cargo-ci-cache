@@ -45,6 +45,7 @@ jobs:
 
       # Configure private Cargo registry credentials here when required.
 
+      # Remove this step for the no-cache variant or control.
       - name: Cache Cargo Registry And Git Inputs
         uses: Swatinem/rust-cache@v2
         with:

@@ -10,7 +10,7 @@
 
 ## Design
 
-Both variants start with an empty local target directory. On RunsOn, the pragmatic starting point for most projects is mise-managed tool setup with Magic Cache and input-only `rust-cache`; the no-cache variant remains the control and can become the winner when dependency downloads are already cheap.
+Both variants start with an empty local target directory and differ only in whether Cargo registry and Git inputs are restored from an archive or downloaded normally.
 
 ```text
 no Rust cache
@@ -28,7 +28,6 @@ Neither variant attempts to preserve Cargo fingerprints, build-script outputs, f
 
 | Situation | Prefer |
 | --- | --- |
-| A typical RunsOn Rust project needs a low-risk starting point | Mise with Magic Cache and input-only `Swatinem/rust-cache` |
 | Dependency downloads are material and the input archive remains small | Input-only `Swatinem/rust-cache` |
 | Cache setup is effectively tied with downloading inputs | No Rust cache |
 | The `rust-cache` post step still performs material target cleanup | No Rust cache or an explicit Cargo-home-only `actions/cache` entry |

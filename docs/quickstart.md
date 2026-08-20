@@ -12,7 +12,7 @@ For GitHub Actions Rust builds, start with:
 - `CARGO_INCREMENTAL=0` for a later `sccache` comparison.
 - `mise-action` when repeated Rust, Zig, or helper-tool setup is material.
 
-This mise, Magic Cache, input-only Cargo cache, and clean-target shape is a low-risk starting point for most projects because it keeps tool setup and dependency downloads reusable without persisting mutable target state. Prefer no Rust cache when input-only setup is effectively tied with normal dependency downloads. For frequently changing PR workloads, canary S3-backed `sccache` in default server mode without a separate Cargo-input archive by default; add that archive only when dependency-download timing justifies it. The canonical decision record is [Decisions](decisions/README.md).
+This shape is low-risk because it keeps tool setup and dependency downloads reusable without persisting mutable target state. Prefer no Rust cache when input-only setup is effectively tied with normal dependency downloads. For frequently changing PR workloads, canary S3-backed `sccache` in default server mode without a separate Cargo-input archive by default; add that archive only when dependency-download timing justifies it. The canonical decision record is [Decisions](decisions/README.md).
 
 ## Copy The Right Shape
 
@@ -20,7 +20,7 @@ This mise, Magic Cache, input-only Cargo cache, and clean-target shape is a low-
 | --- | --- |
 | Clean RunsOn target with optional Cargo-input cache | [RunsOn Deployment Map](deployments/runs-on/README.md) and [`runs-on-mise-rust-cache.yml`](../examples/workflows/runs-on-mise-rust-cache.yml) |
 | Direct S3 compiler-cache canary | [S3-Backed `sccache`](approaches/sccache.md) and [`runs-on-sccache-canary.yml`](../examples/workflows/runs-on-sccache-canary.yml) |
-| RunsOn sticky-input or sticky-target canary after v3.2 | [Sticky-Disk Options](deployments/runs-on/README.md#sticky-disk-options) and [`runs-on-sticky-disk-canary.yml`](../examples/workflows/runs-on-sticky-disk-canary.yml) |
+| RunsOn sticky-input or sticky-target canary after v3.2 | [Sticky-Disk Options](deployments/runs-on/README.md#sticky-disk-options) |
 | Conditional whole-target archive | [`Swatinem/rust-cache` with mtime-preserving checkout](approaches/rust-cache-mtime-checkout.md) and [`rust-cache-mtime-checkout.yml`](../examples/workflows/rust-cache-mtime-checkout.yml) |
 | Tool setup with Rust, Zig, `cargo-lambda`, or Trunk | [Mise Tool Setup](operations/mise-tool-setup.md) |
 | Phase-level cache and runner comparison | [Measuring Cache Performance](operations/measuring-cache-performance.md) |

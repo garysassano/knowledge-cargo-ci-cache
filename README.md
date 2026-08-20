@@ -23,20 +23,4 @@ Whole-target archives, post-v3.2 RunsOn sticky targets, and EBS snapshots are si
 | Review the measurements | [Evidence](docs/evidence/README.md) |
 | Copy workflow examples | [Examples](examples/README.md) |
 
-## Core Mental Model
-
-Cargo no-op behavior requires mutually consistent proof: same source contents and mtimes, same workspace path, same target artifacts and metadata, same dependency source paths, and the same toolchain/build context.
-
-If one piece is missing, stale, moved, or newer than expected, Cargo can mark units dirty and rebuild.
-
-## Documentation Map
-
-| Section | Owns |
-| --- | --- |
-| [Decisions](docs/decisions/README.md) | Current conclusions and superseded decisions |
-| [Approaches](docs/approaches/README.md) | Approach selection, tradeoffs, and workflow links |
-| [Examples](examples/README.md) | Copyable workflow and local-action shapes |
-| [Operations](docs/operations/README.md) | Setup, diagnosis, and maintenance procedures |
-| [Concepts](docs/concepts/README.md) | Stable models and cache semantics |
-| [Evidence](docs/evidence/README.md) | Test setup, observations, interpretation, and limitations |
-| [Reference](docs/reference/README.md) | Dense technical details kept out of first-read pages |
+The full routing and ownership map is [Documentation](docs/README.md), and agent-specific editing rules are in [`AGENTS.md`](AGENTS.md).

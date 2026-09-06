@@ -1,6 +1,6 @@
 # `Swatinem/rust-cache` Behavior
 
-This page documents the released `Swatinem/rust-cache@v2` behavior that matters to the approaches in this archive. It is not a replacement for the upstream input reference; it explains how selected inputs affect restored and saved Cargo state. The current-version notes were checked on August 20, 2026, when `@v2` resolved to v2.9.2.
+This page documents the released `Swatinem/rust-cache@v2` behavior that matters to the approaches in this archive. It is not a replacement for the upstream input reference; it explains how selected inputs affect restored and saved Cargo state. The current-version notes were checked on August 20, 2026, when `@v2` resolved to v2.9.2. The exact-hit and cleanup-error paths described below were rechecked against v2.9.2 on September 6, 2026.
 
 ## Restore And Save Are Different
 
@@ -133,9 +133,11 @@ Choose the remaining inputs from the other steps in the workflow:
 
 These decisions are independent of the `actions/cache` backend. GitHub's hosted cache service, RunsOn Magic Cache, and another compatible backend do not change what `rust-cache` selects or removes.
 
-These options do not guarantee a complete or current target snapshot. An exact cache hit is not replaced during the post step, and the target key does not include all workspace source contents. This can repeatedly restore stale workspace artifacts; use the source-keyed target-cache workaround only when that is measurable and the resulting full archive remains bounded.
+These options do not guarantee a complete or current target snapshot. In v2.9.2, the post step returns as soon as it detects an exact cache hit, before package selection or cleanup. It therefore neither prunes the restored state nor replaces the exact-hit object with target state produced during the job. The target key also does not include all workspace source contents, so stale workspace artifacts can be repeatedly restored; use the source-keyed target-cache workaround only when that is measurable and the resulting full archive remains bounded.
 
 One v2.9.2 implementation detail matters for input-only mode: on an eligible save after a miss or partial restore, the post step still calls target cleanup for each configured workspace even when `cache-targets: false`. The target path is omitted from the saved archive, but traversal can still occur. `save-if: false` and exact hits skip the post-save path. Measure this residual work and use no Rust cache or an explicit Cargo-home-only cache if it is material.
+
+On an eligible save, v2.9.2 catches top-level target, registry, binary, and Cargo Git cleanup errors, emits their stacks only through debug logging, and continues to save. Without debug logging, a cleanup failure can therefore be hard to distinguish from a successful pass that removed nothing. When bounded size matters, verify before/after bytes and file counts instead of treating the absence of a warning as proof that cleanup succeeded.
 
 ## Cleanup Is Not A Size Bound
 
@@ -193,4 +195,4 @@ The behavior above follows the upstream `v2` implementation:
 - [Save-time package selection](https://github.com/Swatinem/rust-cache/blob/v2/src/save.ts#L39-L60)
 - [Workspace target selection](https://github.com/Swatinem/rust-cache/blob/v2/src/workspace.ts#L6-L38)
 - [Target cleanup](https://github.com/Swatinem/rust-cache/blob/v2/src/cleanup.ts#L35-L75)
-- [Exact-hit save skip](https://github.com/Swatinem/rust-cache/blob/v2/src/save.ts#L24-L28)
+- [Exact-hit early return and cleanup-error handling](https://github.com/Swatinem/rust-cache/blob/v2.9.2/src/save.ts#L24-L84)

@@ -17,6 +17,15 @@ Treat these as archived conclusions, not timeless upstream facts. They reflect t
 | D7 | Treat S3-backed `sccache` 0.17 in default server mode with a clean `target/` as the leading measured PR-CI compiler-cache candidate. Do not combine it with a separate input-only Cargo archive by default; add one only when measured registry or Git download savings justify its archive and action overhead. Client-side direct S3 was substantially slower despite a high warm hit rate, and multilevel background writes were incomplete at teardown. Adoption still requires change/concurrency coverage, IAM-enforced trust separation, lifecycle and cost ownership, and a tested direct-rustc rollback. | Leading candidate with strong warm evidence and measured cold risk | [Approach](../approaches/sccache.md), [benchmarks](../evidence/cache-strategy-benchmarks.md) |
 | D8 | Evaluate RunsOn sticky disks after upgrading to RunsOn v3.2 or newer. Test built-in Cargo-input persistence before a custom sticky `target/`; a sticky target requires disk, inode, concurrency, cleanup, and reset controls. | Planned experiment | [RunsOn deployment](../deployments/runs-on/README.md) |
 
+## Additional candidates
+
+| # | Decision | Status | Basis |
+| --- | --- | --- | --- |
+| D9 | Keep Mr. Boxington experimental. Its same-job reuse was competitive, but the recorded fresh-runner Docker integration was limited by Cargo-registry path mapping despite an exact action-cache restore. The upstream mapping fix is present in mbx 1.9.0, but explicit payload modes and newer releases still need a fresh benchmark before adoption. | Experimental; version and integration limited | [Approach](../approaches/mr-boxington.md), [evidence](../evidence/mr-boxington-vs-sccache.md) |
+| D10 | Index Kache as an untested alternative. This archive has not validated its correctness, performance, remote storage, or CI integration. | Not tested | [Kache sources](../reference/vendor-ci-cache-sources.md#kache-not-tested) |
+
+The [RunsOn research collection](../research/runs-on-sccache/README.md) is an implementation and experiment proposal. It supplies no basis to promote a new backend or change D1–D8.
+
 ## Detailed Findings
 
 These supporting findings explain why the decisions above hold. Keep the underlying explanation in the linked canonical pages; this section captures only the durable conclusion.

@@ -16,6 +16,9 @@ Whole-target archives, post-v3.2 RunsOn sticky targets, and EBS snapshots are si
 | Choose a RunsOn implementation | [RunsOn Deployment Map](docs/deployments/runs-on/README.md) |
 | Compare cache approaches | [Approaches](docs/approaches/README.md) |
 | Establish the clean-target baseline | [Clean Target](docs/approaches/clean-target.md) |
+| Compare Mr. Boxington and sccache | [Mr. Boxington](docs/approaches/mr-boxington.md) |
+| Find Kache, cache providers, and their blog posts | [Ecosystem Sources](docs/reference/vendor-ci-cache-sources.md) |
+| Explore proposed compiler-cache improvements | [Research](docs/research/README.md) |
 | Evaluate compiler-output caching | [S3-Backed `sccache`](docs/approaches/sccache.md) |
 | Measure cache phases and runner bottlenecks | [Measuring Cache Performance](docs/operations/measuring-cache-performance.md) |
 | Diagnose recompilation | [Diagnosing Cargo Rebuilds In CI](docs/operations/diagnosing-rebuilds.md) |

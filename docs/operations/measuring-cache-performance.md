@@ -5,6 +5,7 @@ Use this procedure to determine whether a Rust CI cache saves end-to-end time an
 ## Measurement Principles
 
 - Pair every cache strategy with the same source state, command, toolchain, features, profile, target, runner image, and workload concurrency.
+- Randomize or alternate strategy order within each comparison block so time-of-day, capacity, and transient backend effects do not consistently favor one strategy.
 - Record cold population, warm exact reuse, realistic source changes, and invalidating changes separately.
 - Keep job wall time as the adoption metric, then explain it with phase timings, sizes, counters, and resource samples.
 - Preserve intervals or start/end offsets when phases can overlap. Do not sum parallel rustc invocations, `sccache` requests, or sampled utilization and call the result wall time.
@@ -51,6 +52,23 @@ Record the public or sanitized runner profile separately from the strategy:
 - Advertised network class, same-region/cross-region object-store relationship, and generic endpoint path rather than an internal runner label, account, bucket, or region.
 - Workspace storage type, filesystem, capacity, and whether it is local NVMe, EBS, or an unknown abstraction.
 - Toolchain/compiler identity, linker class, workload concurrency, codegen settings, incremental-compilation setting, and a sanitized workload version.
+
+#### Scenario Matrix
+
+Predeclare the scenarios that apply to the cache mechanism. Keep each scenario in its own comparison block rather than pooling incompatible cache states or invalidation events.
+
+| Scenario | What it tests |
+| --- | --- |
+| Cold namespace | Population cost, clean-build behavior, and initial persistent growth |
+| Warm exact repeat | Best-case reuse and exact-key behavior |
+| Source-only change | Cross-commit reuse without dependency changes |
+| Lockfile or manifest change | Dependency invalidation, fallback behavior, and object growth |
+| Feature change | Feature-key separation and non-cacheable work |
+| Profile, target, or compiler-flags change | Build-configuration separation |
+| Toolchain change | Compiler invalidation and namespace separation |
+| Concurrent readers and writers | Request pressure, duplicate saves, and last-writer behavior |
+| Unauthorized writer attempt | Workflow and infrastructure trust enforcement |
+| Cache or backend unavailable | Fail-open behavior, timeout cost, and clean fallback |
 
 ### 2. Capture State Before Restore
 
@@ -101,9 +119,17 @@ Capture at least:
 
 System-wide network counters include unrelated runner traffic. Treat them as supporting evidence unless the experiment isolates the interface and time window. Do not export packet captures, environment dumps, command lines containing secrets, or verbose cloud SDK logs without sanitization.
 
+Before relying on detailed traces, measure their overhead by running the same no-cache workload with detailed sampling disabled and enabled. Keep the sampling cadence and tool set fixed afterward, and report any material measurement overhead.
+
 ### 6. Capture State Afterward
 
-Repeat byte/file/inode measurements and record save outcome, cache growth, compiler-cache statistics, and any failure, timeout, cancellation, fallback, or duplicate-writer behavior. Preserve raw private logs outside this archive; export only sanitized derived records.
+Repeat byte/file/inode measurements and record save outcome, cache growth, compiler-cache statistics, billed runner duration, estimated cost per successful job, persistent bytes by mechanism, and any failure, timeout, cancellation, fallback, or duplicate-writer behavior. Preserve raw private logs outside this archive; export only sanitized derived records.
+
+## Repetition And Stopping Rules
+
+Treat the first 10 paired observations per representative scenario as exploratory evidence for central tendency, not automatic proof of a winner. Do not describe p90 or p95 as stable from only 20–30 jobs; tail claims normally require substantially more comparable observations.
+
+Before collecting results, declare the minimum effect that matters, the intended precision or uncertainty interval, the maximum sampling budget, and the stopping rule. Report sample count, spread, uncertainty, exclusions, and any early stopping. Do not combine cold, warm, changed-source, invalidation, or different runner-profile observations merely to increase the sample count.
 
 ## Attributing CPU, S3, And Storage
 
@@ -126,6 +152,10 @@ Network configuration and instance selection can be optimized in the same final 
 4. Confirm the combined winner on the complete representative workflow.
 
 For archive caches, reducing archive bytes and file count usually improves transfer, extraction, traversal, compression, and upload together. For `sccache`, distinguish many small-object request latency from bulk bandwidth; an instance with higher advertised network throughput can still lose when compiler throughput or per-request latency is the limiting factor. Record S3 request counts and latency distributions when the backend exposes them, but use workflow-side monotonic timings as the per-run source of truth when shared backend metrics cannot isolate one job.
+
+For a separately authorized S3 compiler-cache diagnostic in an isolated test namespace, benchmark representative object sizes with bounded parallel PUT and GET operations at concurrency 1, 4, 8, 16, and 32. Record object-size distribution, latency percentiles, throughput, retries, failures, route/endpoint class, and encryption mode.
+
+For compression attribution, compare supported settings on the same runner, source state, backend, namespace, and workload. Run each setting for both cold population and warm reuse, and capture workload/job wall time, compiler CPU, request duration, stored and transferred bytes, and request counts.
 
 ## Derived Metrics
 
@@ -151,9 +181,9 @@ Use interval unions for cache handling share when phases overlap. Report summed 
 
 ### End-To-End Decision Table
 
-| Strategy | Cache state | Runner profile | Job | Workload | Restore critical path | Post critical path | Net vs paired baseline |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| … | … | … | … | … | … | … | … |
+| Strategy | Cache state | Runner profile | Job | Workload | Restore critical path | Post critical path | Net vs paired baseline | Cost / successful job | Persistent bytes | Operational/trust risk | Decision |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| … | … | … | … | … | … | … | … | … | … | … | … |
 
 ### Archive Breakdown
 
@@ -173,7 +203,13 @@ Use interval unions for cache handling share when phases overlap. Report summed 
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | … | … | … | … | … | … | … |
 
-Report median and p90 for each table after enough paired repetitions, plus sample count and limitations. Keep exact organization-specific comparisons in their private operational context; only sanitized evidence belongs in this archive.
+Report median and tail values only at the precision supported by the repetition plan, plus sample count, spread, uncertainty, and limitations. Keep exact organization-specific comparisons in their private operational context; only sanitized evidence belongs in this archive.
+
+## Adoption And Rollback Gate
+
+Before inspecting results, predeclare adoption thresholds for end-to-end benefit, acceptable cold and tail regressions, cache errors, cost per successful job, persistent growth, and operational or trust risk. A higher hit rate alone does not pass the gate.
+
+Test an unauthorized write and a backend outage. An optional cache should fail open to the clean direct-build path; if the mechanism cannot do that, record the cache as a required dependency and include its failure mode in the decision. Keep the experiment non-required until rollback has been rehearsed, including disabling the cache, returning to direct `rustc` or a clean target, and safely abandoning or expiring persistent state.
 
 ## Related Pages
 

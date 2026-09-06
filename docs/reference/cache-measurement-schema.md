@@ -11,6 +11,8 @@ This schema stores sanitized cache experiments as append-friendly JSON Lines whi
 - Unknown fields are omitted rather than set to a guessed value. Producers may add namespaced fields; consumers must ignore fields they do not understand.
 - One file may contain multiple runs and record types. Repeat the common identity fields on each line so command-line filters do not require a join merely to select a run.
 
+For detailed field types and the phase/metric vocabulary, use [Cache Measurement Fields](cache-measurement-fields.md).
+
 ## Record Types
 
 | `record_type` | Cardinality | Purpose |
@@ -61,4 +63,5 @@ Keep raw logs in the private source system and export only the numeric or catego
 - [Synthetic mixed-record example](../../examples/measurements/cache-measurements.example.jsonl), the only committed example containing a `resource_sample` record
 - [Sanitized degraded archive sample](../evidence/data/target-archive-degraded-sample.jsonl)
 - [Sanitized full-workload compiler-cache sample](../evidence/data/compiler-cache-full-workload-sample.jsonl)
+- [Sanitized Mr. Boxington and sccache cross-run sample](../evidence/data/mr-boxington-sccache-cross-run.jsonl)
 - [Measurement procedure and report tables](../operations/measuring-cache-performance.md)

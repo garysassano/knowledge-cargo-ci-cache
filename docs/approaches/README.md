@@ -1,51 +1,82 @@
 # Approaches
 
-This category owns architecture choices, tradeoffs, status, and decisions. Current conclusions are canonical in [Decisions](../decisions/README.md); this page helps pick the right approach.
+This category owns strategy selection, combinations, and tradeoffs. [Decisions](../decisions/README.md) owns adoption status, [Providers](../providers/README.md) maps strategies to services and their blog posts, and [cache layers](../concepts/cache-layers.md) explains how the mechanisms combine.
+
+Apply the [open-source, direct GitHub Actions scope](../README.md#scope-and-applicability) before implementing a branch. Provider services and other-platform examples supply research ideas; listing them here does not make their hosted implementation an adoption candidate.
 
 ## Decision Tree
 
-```text
-Need a Cargo CI cache?
-  On RunsOn, start with mise, Magic Cache, input-only rust-cache, and a clean target.
-  Keep no Rust cache as the control and remove the input cache if it does not pay for itself.
-
-Need compiler-output reuse across changing PRs?
-  Canary S3-backed sccache without a separate Cargo-input archive by default.
-
-Need maximum native target reuse and can upgrade RunsOn?
-  Test sticky Cargo inputs after v3.2, then a custom sticky target only if simpler options remain too slow.
-
-Considering a whole-target archive?
-  Use it only for a narrow stable workload with exact keys, no broad fallback, and small monitored objects.
-
-Need maximum full-filesystem no-op fidelity and can own lifecycle complexity?
-  Consider the archived EBS/filesystem snapshot approach.
-
-Considering S3 Files for Cargo target no-op state?
-  Do not use it for this purpose based on these experiments.
+```mermaid
+flowchart TD
+    start[Measure a clean-target baseline and complete-job phases] --> cost{Where is repeated work expensive?}
+    cost -->|Tools or checkout| setup[Cache setup or Git transport]
+    cost -->|Dependency downloads| inputs[Compare input archive with native input storage]
+    cost -->|Compilation| context{Where does Cargo run?}
+    cost -->|Duplicate jobs| artifact[Build once and share compatible exact artifacts]
+    cost -->|Cache transfer or extraction| size[Reduce cached state or test native persistence]
+    context -->|Container builder| container[Compare dependency layers and persistent cache mounts]
+    context -->|Directly on runner| reuse{What reuse is needed?}
+    reuse -->|Eligible outputs across changing commits| compiler[Compare sccache, Mr. Boxington, and Kache]
+    reuse -->|Cargo no-op or full target state| target{Native persistence available?}
+    target -->|Yes| disk[Test native state - RunsOn managed EBS sticky disks included]
+    target -->|No| archive[Test a bounded target archive with compatible source state]
+    setup --> verify[Validate correctness and complete-job benefit]
+    inputs --> verify
+    artifact --> verify
+    size --> verify
+    container --> verify
+    compiler --> verify
+    disk --> verify
+    archive --> verify
+    verify -->|No material benefit| simple[Keep the simpler baseline]
 ```
 
-Use [mise tool setup](../operations/mise-tool-setup.md) alongside any approach when repeated Rust/Zig/helper-tool setup time matters.
+Follow the relevant route below. This flow chooses an experiment, not a universal winner. On RunsOn, use the [quickstart](../quickstart.md) and [deployment map](../deployments/runs-on/README.md) for the current practical starting point. For source-mtime rebuilds, use [freshness diagnosis](../operations/diagnosing-rebuilds.md); the [content-fingerprint alternative](../research/cargo-freshness-alternatives.md) remains a nightly experiment.
+
+For named implementations use [Tools](../tools/README.md); for where their state lives use [storage topologies](../concepts/storage-topologies.md).
+
+## CI strategy map
+
+These families cover the reusable mechanisms represented in this archive, including optimizations that reduce work without being caches. Provider pages identify the documented deployment and source limits; an absent provider entry means not assessed.
+
+| Strategy family                                            | Canonical explanation                                                                                                                                             | Provider or primary-source route                                                                                                                            |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No Rust cache as control; clean local target               | [Clean target](clean-target.md)                                                                                                                                   | [RunsOn baseline](../deployments/runs-on/README.md)                                                                                                         |
+| Cached tool setup and prebuilt images                      | [Mise setup](../operations/mise-tool-setup.md), [work reuse](../operations/ci-work-reuse.md)                                                                      | [WarpBuild snapshots](../providers/warpbuild.md), [container builds](container-builds.md)                                                                   |
+| Git mirrors or cached Git objects                          | [Preparation and checkout](../operations/ci-work-reuse.md#preparation-and-checkout)                                                                               | [RunsOn](../providers/runs-on.md), [Actuated](../providers/actuated.md)                                                                                     |
+| Cargo input archives                                       | [rust-cache behavior](../concepts/rust-cache-behavior.md)                                                                                                         | [RunsOn](../providers/runs-on.md), [Blacksmith](../providers/blacksmith.md), [Ubicloud](../providers/ubicloud.md), [WarpBuild](../providers/warpbuild.md)   |
+| Faster or self-hosted archive transport                    | [Cache primitives](../concepts/cache-primitives.md)                                                                                                               | [Provider map](../providers/README.md), including [Actuated S3-compatible storage](../providers/actuated.md)                                                |
+| Full target archive with compatible checkout               | [Mtime-preserving checkout](rust-cache-mtime-checkout.md), [source-keyed target](rust-cache-source-keyed-target-cache.md)                                         | [Core archive clients](../reference/vendor-ci-cache-sources.md)                                                                                             |
+| Compiler/build-action object reuse                         | [sccache vs Mr. Boxington vs Kache](../tools/compiler-caches.md)                                                                                                  | [RunsOn](../providers/runs-on.md), [Namespace](../providers/namespace.md), [Depot](../providers/depot.md), [WarpBuild guide](../providers/warpbuild.md)     |
+| Native Cargo inputs, target, or compiler-cache store       | [Persistent state](persistent-state.md)                                                                                                                           | [Namespace](../providers/namespace.md), [Blacksmith](../providers/blacksmith.md), [RunsOn](../providers/runs-on.md), [Depot CI beta](../providers/depot.md) |
+| Managed EBS snapshots or broader VM snapshots              | [Persistent state](persistent-state.md)                                                                                                                           | [RunsOn sticky disks](../deployments/runs-on/README.md#sticky-disk-options), [WarpBuild Cloud Ubuntu](../providers/warpbuild.md)                            |
+| Custom filesystem snapshot lifecycle                       | [Archived EBS implementation](ebs-snapshot.md)                                                                                                                    | [Snapshot action](../../examples/actions/snapshot/README.md)                                                                                                |
+| Container dependency layers and cargo-chef                 | [Container builds](container-builds.md)                                                                                                                           | [Earthly](../providers/earthly.md), [Depot](../providers/depot.md), Docker/cargo-chef primary docs on the approach page                                     |
+| BuildKit cache mounts and persistent builders              | [Container builds](container-builds.md)                                                                                                                           | [Earthly](../providers/earthly.md), [Depot](../providers/depot.md), [Blacksmith](../providers/blacksmith.md), [RunsOn](../providers/runs-on.md)             |
+| Build once, artifact fan-out, skip/cancel unnecessary jobs | [CI work reuse](../operations/ci-work-reuse.md)                                                                                                                   | GitHub workflow/artifact documentation on the operation page                                                                                                |
+| CPU/RAM/NVMe tuning and distributed compilation            | [Measurement](../operations/measuring-cache-performance.md), [remaining work](../operations/ci-work-reuse.md#avoid-unnecessary-execution-and-tune-remaining-work) | Provider case studies and upstream sccache distributed docs; not persistence by themselves                                                                  |
+| Network filesystem for Cargo target                        | [S3 Files](s3-files.md)                                                                                                                                           | Rejected for the measured target workload; not a rejection of every network filesystem                                                                      |
+| Freshness based on contents rather than mtimes             | [Cargo freshness alternatives](../research/cargo-freshness-alternatives.md)                                                                                       | Cargo nightly docs and stabilization trackers; not a stable default                                                                                         |
+| New object-cache transports, local tiers, and gateways     | [RunsOn research ownership map](../research/runs-on-sccache/README.md)                                                                                            | Proposed designs with one [roadmap](../research/runs-on-sccache/roadmap.md); no implied adoption                                                            |
 
 ## Decision Matrix
 
-| Approach | Status | Best when | Main tradeoff | Page | Example |
-| --- | --- | --- | --- | --- | --- |
-| Clean target with mise and input-only `rust-cache` through RunsOn Magic Cache | Recommended practical default | You want a low-risk setup for most Rust projects while keeping mutable target state disposable. | Every job compiles; input-only caching avoids downloads but not compilation and may be unnecessary for small dependency sets. | [clean-target.md](clean-target.md) | [RunsOn input-only workflow](../../examples/workflows/runs-on-mise-rust-cache.yml) |
-| Clean target with no Rust cache | Measurement control or simplest winner | Dependency downloads are cheap, cache setup is tied, or you need an attributable baseline. | Every job downloads missing inputs and compiles, but there are no Rust cache keys, archives, saves, or backend dependencies. | [clean-target.md](clean-target.md) | [RunsOn input-only workflow](../../examples/workflows/runs-on-mise-rust-cache.yml), whose Rust cache step is marked removable for this variant |
-| Clean target with S3-backed `sccache` in default server mode | Leading measured PR-CI candidate | Source changes frequently and eligible compiler outputs remain reusable across commits. | Cargo orchestration, remote object operations, non-cacheable calls, and linking remain. | [sccache.md](sccache.md) | [canary workflow](../../examples/workflows/runs-on-sccache-canary.yml) |
-| `Swatinem/rust-cache` whole-target archive with mtime-preserving checkout | Conditional narrow option | A stable workload produces a small archive whose exact restore/save is cheaper than recompilation. | Archive growth and serialization can erase the benefit; source mtimes and target state must agree. | [rust-cache-mtime-checkout.md](rust-cache-mtime-checkout.md) | [workflow](../../examples/workflows/rust-cache-mtime-checkout.yml) |
-| `Swatinem/rust-cache` with source-keyed target cache | Narrow workaround | A measured stale exact-hit cycle must be fixed and the resulting target archive can be tightly bounded. | Full-tree archive cost, strict ordering, source invalidation, and copy-forward risk. | [rust-cache-source-keyed-target-cache.md](rust-cache-source-keyed-target-cache.md) | [workflow](../../examples/workflows/rust-cache-source-keyed-target-cache.yml) |
-| Mr. Boxington | Experimental | Evaluate broader build-action reuse with supported commands and stable mappings. | The recorded Docker exact restore did not yield useful Rust reuse; newer releases and payload modes need fresh qualification. | [mr-boxington.md](mr-boxington.md) | [Evidence](../evidence/mr-boxington-vs-sccache.md) |
-| Kache | Not tested | Inspect an additional compiler-cache candidate. | Upstream claims and examples only; no benchmark or adoption result in this archive. | [Ecosystem entry](../reference/vendor-ci-cache-sources.md#kache-not-tested) | None tested |
-| EBS snapshot / filesystem snapshot | Archived alternative | You need maximum local no-op fidelity and can own snapshot lifecycle complexity. | Heavier infrastructure, credential scrubbing, and snapshot scoping. | [ebs-snapshot.md](ebs-snapshot.md) | [workflow](../../examples/workflows/ebs-snapshot.yml) |
-| S3 Files | Rejected for Cargo target state | You need shared file-system access for another workload. | Cargo target metadata traversal was too slow/variable for these tests. | [s3-files.md](s3-files.md) | [workflow](../../examples/workflows/s3-files.yml) |
+Use this compact status map with the [canonical decisions](../decisions/README.md). Detailed tradeoffs and copyable examples are owned by the linked pages.
 
-RunsOn sticky disks (native Cargo-input or target persistence without tar archive serialization) are a platform mechanism rather than a generic approach and remain a planned experiment after the v3.2 upgrade (decision D8). They are owned by [Sticky-Disk Options](../deployments/runs-on/README.md#sticky-disk-options) in the RunsOn deployment map.
+| Choice                                                      | Archive status                                                                                | Next step                                                                                                                 |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Clean local target, optional input archive                  | Practical baseline; no Rust cache remains the control.                                        | [Clean target](clean-target.md)                                                                                           |
+| Compiler/build-action cache                                 | sccache has the leading measured candidate; Mr. Boxington is experimental; Kache is untested. | [Three-tool comparison](../tools/compiler-caches.md)                                                                      |
+| Whole-target archive                                        | Conditional, narrow workload; bounded size and compatible source/build state.                 | [Mtime-preserving checkout](rust-cache-mtime-checkout.md), [source-keyed target](rust-cache-source-keyed-target-cache.md) |
+| Native inputs or target, including managed EBS sticky disks | Unmeasured here; Cargo inputs before custom target persistence on RunsOn.                     | [Persistent state](persistent-state.md), [RunsOn sticky options](../deployments/runs-on/README.md#sticky-disk-options)    |
+| Custom EBS snapshot action                                  | Archived implementation with measured no-op fidelity.                                         | [Custom snapshot](ebs-snapshot.md)                                                                                        |
+| Container layers and persistent BuildKit mounts             | Source-backed strategies; not benchmarked here.                                               | [Container builds](container-builds.md), [cargo-chef](../tools/cargo-chef.md)                                             |
+| S3 Files for Cargo target                                   | Rejected for the measured target workload.                                                    | [S3 Files](s3-files.md)                                                                                                   |
+| Content-based Cargo freshness                               | Nightly watchlist; not the stable default.                                                    | [Freshness alternatives](../research/cargo-freshness-alternatives.md)                                                     |
 
 ## Compatibility Rule
 
-Do not combine `Swatinem/rust-cache` target management with a sticky/full filesystem owner for the same `target/`, or two Cargo-home owners for the same `$CARGO_HOME` paths. See the [canonical compatibility rule](../concepts/cargo-path-coverage.md#compatibility-rule-canonical) for why.
+Do not combine archive and native-state owners for the same Cargo paths. See the [canonical path ownership rule](../concepts/cargo-path-coverage.md#compatibility-rule-canonical). Tool setup and a compiler cache can complement one another; two tools competing for `RUSTC_WRAPPER` need explicitly supported and tested composition.
 
 ## Architecture Diagrams
 
@@ -53,7 +84,7 @@ Keep diagrams beside the canonical explanation of the behavior they represent:
 
 - [`rust-cache` with mtime-preserving checkout](rust-cache-mtime-checkout.md#architecture)
 - [`rust-cache` with source-keyed full target cache](rust-cache-source-keyed-target-cache.md#architecture)
-- [S3-backed `sccache`](sccache.md#design)
+- [S3-backed `sccache`](../tools/sccache.md#design)
 - [RunsOn archive, compiler-cache, and sticky-disk choices](../deployments/runs-on/README.md)
 - [Filesystem snapshot lifecycle](ebs-snapshot.md#architecture)
 - [S3 Files network-filesystem experiment](s3-files.md#architecture)

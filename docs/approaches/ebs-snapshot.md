@@ -1,22 +1,28 @@
-# EBS Snapshot / Filesystem Snapshot
+# EBS snapshots: managed sticky disks and the archived custom action
+
+RunsOn now offers [managed sticky disks](https://runs-on.com/docs/runners/capabilities/sticky-disks/) backed by EBS volumes and snapshots. For a new RunsOn v3.2-or-newer experiment, start with the [managed sticky deployment](../deployments/runs-on/README.md#sticky-disk-options): built-in Cargo input persistence comes first, and target persistence requires a custom path. Managed sticky performance remains unmeasured here.
+
+This page owns the **archived custom snapshot implementation and its measured filesystem layout**. Its lifecycle and results should not be attributed to the managed feature. The broader mechanism belongs in [persistent state](persistent-state.md), and [storage topologies](../concepts/storage-topologies.md) distinguishes EBS block devices from object stores and network filesystems.
 
 ## Summary
 
-| Field | Value |
-| --- | --- |
-| Status | Archived alternative |
-| Use when | Maximum local no-op fidelity matters more than infrastructure and lifecycle complexity. |
+| Field         | Value                                                                                                |
+| ------------- | ---------------------------------------------------------------------------------------------------- |
+| Status        | Custom action archived; managed EBS sticky alternative documented separately                         |
+| Use when      | Maximum local no-op fidelity matters more than infrastructure and lifecycle complexity.              |
 | Main tradeoff | Credential scrubbing, snapshot scope, storage lifecycle, and matrix growth require active ownership. |
 
 ## Related Files
 
-| File | Purpose |
-| --- | --- |
-| [Workflow example](../../examples/workflows/ebs-snapshot.yml) | Generic snapshot-root layout for workspace, Cargo home, target, and helper caches. |
-| [Snapshot action](../../examples/actions/snapshot/README.md) | Local RunsOn snapshot fork that supports keyed snapshot streams and smart saves. |
-| [Cargo Lambda snapshot matrix](../../examples/workflows/cargo-lambda-snapshot-matrix.yml) | Sanitized matrix workflow using per-job snapshot keys and smart-save markers. |
+| File                                                                                      | Purpose                                                                            |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [Workflow example](../../examples/workflows/ebs-snapshot.yml)                             | Generic snapshot-root layout for workspace, Cargo home, target, and helper caches. |
+| [Snapshot action](../../examples/actions/snapshot/README.md)                              | Local RunsOn snapshot fork that supports keyed snapshot streams and smart saves.   |
+| [Cargo Lambda snapshot matrix](../../examples/workflows/cargo-lambda-snapshot-matrix.yml) | Sanitized matrix workflow using per-job snapshot keys and smart-save markers.      |
 
 ## Design
+
+The remaining workflow, diagram, layout, and contract describe the archived custom action.
 
 ```text
 restore mounted filesystem snapshot
@@ -116,4 +122,4 @@ The [`Swatinem/rust-cache` vs `runs-on/snapshot` evidence](../evidence/rust-cach
 
 ## Decision
 
-Keep this as an archived alternative for workloads where maximum local no-op fidelity justifies infrastructure, lifecycle, and credential-management complexity. Do not combine it with `rust-cache` on the same Cargo home or target paths; see the [canonical compatibility rule](../concepts/cargo-path-coverage.md#compatibility-rule-canonical).
+Keep this custom implementation as an archived alternative for workloads where maximum local no-op fidelity justifies infrastructure, lifecycle, and credential-management complexity. Do not combine it with `rust-cache` on the same Cargo home or target paths; see the [canonical compatibility rule](../concepts/cargo-path-coverage.md#compatibility-rule-canonical).

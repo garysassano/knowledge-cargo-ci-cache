@@ -16,15 +16,15 @@ This shape is low-risk because it keeps tool setup and dependency downloads reus
 
 ## Copy The Right Shape
 
-| Need | Use |
-| --- | --- |
-| Clean RunsOn target with optional Cargo-input cache | [RunsOn Deployment Map](deployments/runs-on/README.md) and [`runs-on-mise-rust-cache.yml`](../examples/workflows/runs-on-mise-rust-cache.yml) |
-| Direct S3 compiler-cache canary | [S3-Backed `sccache`](approaches/sccache.md) and [`runs-on-sccache-canary.yml`](../examples/workflows/runs-on-sccache-canary.yml) |
-| RunsOn sticky-input or sticky-target canary after v3.2 | [Sticky-Disk Options](deployments/runs-on/README.md#sticky-disk-options) |
-| Conditional whole-target archive | [`Swatinem/rust-cache` with mtime-preserving checkout](approaches/rust-cache-mtime-checkout.md) and [`rust-cache-mtime-checkout.yml`](../examples/workflows/rust-cache-mtime-checkout.yml) |
-| Tool setup with Rust, Zig, `cargo-lambda`, or Trunk | [Mise Tool Setup](operations/mise-tool-setup.md) |
-| Phase-level cache and runner comparison | [Measuring Cache Performance](operations/measuring-cache-performance.md) |
-| Rebuild diagnosis | [Diagnosing Cargo Rebuilds In CI](operations/diagnosing-rebuilds.md) |
+| Need                                                   | Use                                                                                                                                                                                        |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Clean RunsOn target with optional Cargo-input cache    | [RunsOn Deployment Map](deployments/runs-on/README.md) and [`runs-on-mise-rust-cache.yml`](../examples/workflows/runs-on-mise-rust-cache.yml)                                              |
+| Direct S3 compiler-cache canary                        | [S3-Backed `sccache`](tools/sccache.md) and [`runs-on-sccache-canary.yml`](../examples/workflows/runs-on-sccache-canary.yml)                                                               |
+| RunsOn sticky-input or sticky-target canary after v3.2 | [Sticky-Disk Options](deployments/runs-on/README.md#sticky-disk-options)                                                                                                                   |
+| Conditional whole-target archive                       | [`Swatinem/rust-cache` with mtime-preserving checkout](approaches/rust-cache-mtime-checkout.md) and [`rust-cache-mtime-checkout.yml`](../examples/workflows/rust-cache-mtime-checkout.yml) |
+| Tool setup with Rust, Zig, `cargo-lambda`, or Trunk    | [Mise Tool Setup](operations/mise-tool-setup.md)                                                                                                                                           |
+| Phase-level cache and runner comparison                | [Measuring Cache Performance](operations/measuring-cache-performance.md)                                                                                                                   |
+| Rebuild diagnosis                                      | [Diagnosing Cargo Rebuilds In CI](operations/diagnosing-rebuilds.md)                                                                                                                       |
 
 ## When To Escalate
 
@@ -38,4 +38,4 @@ Cargo can skip compilation only when source inputs, source mtimes, workspace pat
 
 The short explanation is [Cargo Freshness Model](concepts/cargo-freshness-model.md). The detailed signal table is [Cargo Freshness Signals](reference/cargo-freshness-signals.md).
 
-For other compiler wrappers, see the [experimental Mr. Boxington approach](approaches/mr-boxington.md) and [untested Kache entry](reference/vendor-ci-cache-sources.md#kache-not-tested). Provider documentation and blog posts live in the [ecosystem catalog](reference/vendor-ci-cache-sources.md); proposed RunsOn improvements live under [Research](research/README.md).
+For other compiler wrappers, see the [experimental Mr. Boxington approach](tools/mr-boxington.md) and [untested Kache entry](reference/vendor-ci-cache-sources.md#kache-not-tested). Provider documentation and blog posts live in the [ecosystem catalog](reference/vendor-ci-cache-sources.md); proposed RunsOn improvements live under [Research](research/README.md).

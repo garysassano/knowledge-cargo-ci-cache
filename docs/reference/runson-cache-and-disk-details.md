@@ -4,14 +4,14 @@ This page preserves the detailed ownership, data-flow, lifecycle, and isolation 
 
 ## State Ownership
 
-| Mechanism | Persistent state | Data movement | `target/` at job start | Primary invalidation unit | Writer model |
-| --- | --- | --- | --- | --- | --- |
-| Magic Cache with input-only `rust-cache` | Cargo registry and Git inputs; optional mise tool state | Restore and save compressed archives through the cache protocol | Clean | Complete archive key | Prefer one trusted default-branch writer |
-| Magic Cache with whole-target cache | Cargo inputs and a cleaned or complete target tree | Restore, extract, clean, recompress, and upload the complete selected archive | Restored archive | Complete archive key and fallback lineage | One trusted writer; exact source/build lineage |
-| Direct S3 `sccache` | Independently keyed eligible compiler outputs | Per-compiler-call object lookup, materialization, and optional write | Clean | One compiler invocation | Trusted writers enforced by IAM |
-| Sticky built-in `rust` mode | Cargo registry and Git directories on a native disk | Restore and commit EBS-backed disk snapshots | Clean | Disk lineage | Last completed clean snapshot in the lineage |
-| Sticky custom target | Native Cargo inputs and target filesystem | Restore and commit EBS-backed disk snapshots | Native persistent target | Disk lineage and Cargo freshness | Partition or serialize writers |
-| Local archived EBS snapshot action | Explicit mounted filesystem subtree, potentially including workspace, Cargo home, target, and helper caches | Create, attach, mount, unmount, detach, and snapshot an EBS volume | Native persistent target | Workflow-defined snapshot key/lineage | Workflow-owned lifecycle and save policy |
+| Mechanism                                | Persistent state                                                                                            | Data movement                                                                 | `target/` at job start   | Primary invalidation unit                 | Writer model                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------ | ----------------------------------------- | ---------------------------------------------- |
+| Magic Cache with input-only `rust-cache` | Cargo registry and Git inputs; optional mise tool state                                                     | Restore and save compressed archives through the cache protocol               | Clean                    | Complete archive key                      | Prefer one trusted default-branch writer       |
+| Magic Cache with whole-target cache      | Cargo inputs and a cleaned or complete target tree                                                          | Restore, extract, clean, recompress, and upload the complete selected archive | Restored archive         | Complete archive key and fallback lineage | One trusted writer; exact source/build lineage |
+| Direct S3 `sccache`                      | Independently keyed eligible compiler outputs                                                               | Per-compiler-call object lookup, materialization, and optional write          | Clean                    | One compiler invocation                   | Trusted writers enforced by IAM                |
+| Sticky built-in `rust` mode              | Cargo registry and Git directories on a native disk                                                         | Restore and commit EBS-backed disk snapshots                                  | Clean                    | Disk lineage                              | Last completed clean snapshot in the lineage   |
+| Sticky custom target                     | Native Cargo inputs and target filesystem                                                                   | Restore and commit EBS-backed disk snapshots                                  | Native persistent target | Disk lineage and Cargo freshness          | Partition or serialize writers                 |
+| Local archived EBS snapshot action       | Explicit mounted filesystem subtree, potentially including workspace, Cargo home, target, and helper caches | Create, attach, mount, unmount, detach, and snapshot an EBS volume            | Native persistent target | Workflow-defined snapshot key/lineage     | Workflow-owned lifecycle and save policy       |
 
 Keep each path under one owner. In particular, do not let `rust-cache` clean a target or Cargo-home directory that a sticky disk or filesystem snapshot is intended to preserve natively.
 
@@ -121,7 +121,18 @@ At action start, if either free space or free inodes is below 5%, the action att
 
 Treat those thresholds as last-resort platform behavior, not the experiment's operating target. Record bytes, file count, free space, and free inodes; set an earlier project-specific reset threshold; and test a manual lineage reset before adoption.
 
-Declaring a sticky disk makes persistent storage part of the job contract. A missing ready marker, unavailable disk, or `sticky_wait_timeout` expiry fails the setup step unless the workflow deliberately handles the failure. Set `sticky_wait_timeout: 15m` explicitly while the documentation and released action metadata disagree on the default.
+## Sticky-disk failure boundary
+
+Source refresh: 2026-09-06, pinned to `runs-on/action` v2.3.1. The [sticky-disk capability page](https://runs-on.com/docs/runners/capabilities/sticky-disks/) describes unavailable storage as a setup failure and mentions a five-minute wait. The [released implementation](https://github.com/runs-on/action/blob/v2.3.1/internal/stickydisk/stickydisk.go) distinguishes these states:
+
+| State                                                    | Released action behavior                                                                           |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Agent explicitly creates the terminal unavailable marker | Warns, leaves `cache-hit` false, continues without sticky caches, and skips sticky post-job hooks. |
+| Required agent contract variables are missing            | Setup error; the wrapper has not yet had an opportunity to provide its own fallback.               |
+| No ready/unavailable marker arrives before the deadline  | Setup error. A ready marker is waited for, not required to exist immediately.                      |
+| A ready marker exists but the mount is invalid           | Setup validation error.                                                                            |
+
+The [v2.3.1 tests](https://github.com/runs-on/action/blob/v2.3.1/internal/stickydisk/stickydisk_test.go) include continuing on explicit unavailability and erroring on timeout. The [action metadata](https://github.com/runs-on/action/blob/v2.3.1/action.yml) and implementation use a 15-minute default; set `sticky_wait_timeout: 15m` explicitly. This is pinned source behavior, not a live failure-injection result. Test each state in the deployed platform instead of treating all missing-disk states as equivalent.
 
 ## Magic Cache Isolation
 
@@ -137,25 +148,25 @@ This isolates cache-protocol credentials, not arbitrary direct S3 clients. It do
 
 ## Trust Boundaries
 
-| Data path | Workflow setting | Infrastructure control still required |
-| --- | --- | --- |
-| Magic Cache archive | Cache key, branch save condition, optional protocol isolation | Separate stack/role for genuinely untrusted code; backend lifecycle and encryption |
-| Direct S3 `sccache` | Repository-specific prefix and optional `SCCACHE_S3_RW_MODE=READ_ONLY` | IAM-enforced read-only readers and trusted writers; dedicated bucket or prefix policy where appropriate |
-| Sticky disk | Separate lineage names and workflow concurrency | Runner/repository trust boundary, encrypted EBS, snapshot permissions, and retention |
-| Archived EBS snapshot | Workflow save policy and credential scrub step | Least-privilege EC2/EBS role, encryption, retention, and deletion controls |
+| Data path             | Workflow setting                                                       | Infrastructure control still required                                                                   |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Magic Cache archive   | Cache key, branch save condition, optional protocol isolation          | Separate stack/role for genuinely untrusted code; backend lifecycle and encryption                      |
+| Direct S3 `sccache`   | Repository-specific prefix and optional `SCCACHE_S3_RW_MODE=READ_ONLY` | IAM-enforced read-only readers and trusted writers; dedicated bucket or prefix policy where appropriate |
+| Sticky disk           | Separate lineage names and workflow concurrency                        | Runner/repository trust boundary, encrypted EBS, snapshot permissions, and retention                    |
+| Archived EBS snapshot | Workflow save policy and credential scrub step                         | Least-privilege EC2/EBS role, encryption, retention, and deletion controls                              |
 
 Never persist Cargo registry credentials, cloud credentials, or tokens in a save-capable archive or disk. If Cargo home is persistent, scrub `credentials`, `credentials.toml`, and any generated config containing secrets before the post step.
 
 ## Performance Cost Shape
 
-| Mechanism | Dominant warm-path risks |
-| --- | --- |
-| Input-only archive | Fixed cache setup can approach the dependency-download time it avoids |
-| Whole-target archive | Complete-tree extraction, metadata writes, cleanup, compression, and immutable-object growth |
-| Direct S3 `sccache` | Cargo orchestration, many small object operations, non-cacheable calls, and linking |
-| Sticky Cargo inputs | Snapshot restore/commit, wait time, and EBS cost |
-| Sticky target | Snapshot restore/commit, native target growth, inode pressure, source-mtime mismatches, and last-writer behavior |
-| Archived EBS snapshot | Attach/mount/snapshot lifecycle, custom cleanup, permissions, and snapshot storage |
+| Mechanism             | Dominant warm-path risks                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Input-only archive    | Fixed cache setup can approach the dependency-download time it avoids                                            |
+| Whole-target archive  | Complete-tree extraction, metadata writes, cleanup, compression, and immutable-object growth                     |
+| Direct S3 `sccache`   | Cargo orchestration, many small object operations, non-cacheable calls, and linking                              |
+| Sticky Cargo inputs   | Snapshot restore/commit, wait time, and EBS cost                                                                 |
+| Sticky target         | Snapshot restore/commit, native target growth, inode pressure, source-mtime mismatches, and last-writer behavior |
+| Archived EBS snapshot | Attach/mount/snapshot lifecycle, custom cleanup, permissions, and snapshot storage                               |
 
 The measured archive incident was dominated by local extraction and compression rather than S3 transfer. A separate controlled compiler-cache test comparing c8a with m8idn was instead sensitive to CPU/compiler throughput and per-object orchestration; m8idn was slower for every tested strategy. This distinct CPU-family comparison says nothing about relative CPU performance among the same-processor c8a, m8a, and r8a families. See [Target Archive Growth In Production](../evidence/target-archive-growth.md) and [Cache Strategy Benchmarks](../evidence/cache-strategy-benchmarks.md).
 

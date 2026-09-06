@@ -12,7 +12,13 @@ Use [Documentation](docs/README.md) for the canonical reader routes, category ow
 | Apply a cache approach                   | [Approaches](docs/approaches/README.md), [RunsOn deployment](docs/deployments/runs-on/README.md), and [Examples](examples/README.md)           |
 | Diagnose or measure                      | [Operations](docs/operations/README.md) and [Evidence](docs/evidence/README.md)                                                                |
 | Verify implementation or external claims | [Implementation reference](docs/reference/compiler-cache-implementation.md) and [ecosystem sources](docs/reference/vendor-ci-cache-sources.md) |
-| Explore unimplemented work               | [Research ownership map](docs/research/runs-on-sccache/README.md) and its single roadmap                                                       |
+| Identify tools and storage               | [Tools](docs/tools/README.md) and [storage topologies](docs/concepts/storage-topologies.md)                                                    |
+| Compare compiler tools                   | [sccache vs Mr. Boxington vs Kache](docs/tools/compiler-caches.md)                                                                             |
+| Find provider strategies and articles    | [Provider index](docs/providers/README.md) and [strategy map](docs/approaches/README.md)                                                       |
+| Track unstable freshness features        | [Cargo freshness alternatives](docs/research/cargo-freshness-alternatives.md)                                                                  |
+| Explore unimplemented work               | [Research](docs/research/README.md) and the RunsOn collection's single roadmap                                                                 |
+
+Implementation scope is [open-source components used directly in GitHub Actions](docs/README.md#scope-and-applicability). Keep closed-provider, other-platform, and unstable-feature documentation as explicitly classified research/reference material; do not discard it or promote its implementation into practical guidance implicitly.
 
 ## Retrieval and claim handling
 
@@ -35,8 +41,21 @@ Follow the [canonical ownership and page conventions](docs/README.md#canonical-o
 - Preserve failed experiments and superseded conclusions when they explain a decision. Do not maintain a chronological experiment diary.
 - Keep sanitized measurements in `docs/evidence/data/`, the compact JSONL contract and detailed field vocabulary in reference, and the synthetic example in `examples/measurements/`.
 - Keep supported copyable workflows in `examples/workflows/`; explicitly unmeasured workflow designs stay under research until qualified.
-- Preserve provider documentation and blog URLs when reorganizing the ecosystem catalog. Keep untested candidates, including Kache, labeled explicitly.
+- Keep provider capabilities and blog collections in `docs/providers/`, core projects and historical wrappers in reference, and cross-tool selection in `docs/tools/compiler-caches.md`. Preserve source URLs when reorganizing. Keep untested candidates, including Kache, labeled explicitly.
+- Keep decision diagrams beside their canonical explanation, with adjacent prose/links for retrieval. Diagrams must retain applicability and maturity boundaries; do not imply that a reference-only hosted service is an adopted implementation.
 - Brief claim-status and version caveats may repeat for independent retrieval; complete procedures and behavioral rules must link to their owner.
+
+## Ingesting new information
+
+1. Search existing tool names/aliases, provider names, strategy pages, source URLs, and decision IDs before creating a page. Prefer enriching the existing owner; a newly discovered article is not automatically a new strategy.
+2. Use the [ownership map](docs/README.md#canonical-ownership): named implementations in tools, combinations/tradeoffs in approaches, provider capabilities and blog sources in providers, storage semantics in concepts, and unstable work or implementation proposals in research. Keep measurements in evidence and operational procedures in operations/deployments.
+3. Record a concise applicability/status statement and a review date. Distinguish an open-source component usable directly in GitHub Actions from a provider-dependent service, another CI platform, or an unstable experiment. Check the actual component's license/source; a public action does not establish that its backend is open source. Use “not assessed” when that boundary is unknown.
+4. For external claims, link the primary source near the claim and record the relevant version, platform, cache layer, backend/protocol, and persistence lifetime. Keep provider timing claims separate from local measurements. Preserve useful closed-provider documentation and unstable ideas even when their exact implementation is outside practical scope.
+5. Summarize only the durable new information in its owner and cross-link related tools, strategies, storage, and providers. Preserve contradictory or superseded evidence with its original context; resolve changed current conclusions through decisions/history. Do not silently turn an upstream fix into a local retest.
+6. Link a new page from its category index and any directly affected reader route or strategy entry. Update a decision diagram when the choice actually changes. Keep one canonical comparison/result table and link to it; brief independently retrievable status caveats may repeat.
+7. Run the relevant validation below, review the diff for lost source URLs, and check that each new page is reachable from the root README. Review scope, maturity, and duplicate claims manually: the checker enforces local links and measurement structure, not factual truth or editorial ownership.
+
+Category indexes and these conventions are the ingestion contract. Extend them when a real recurring ambiguity appears; keep review dates and applicability beside the content they qualify.
 
 ## Markdown Style
 

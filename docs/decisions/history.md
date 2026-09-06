@@ -35,6 +35,20 @@ When a decision in [`docs/decisions/README.md`](README.md) changes, append an en
 - Change: Added experimental D9 and untested D10, retaining D1–D8. Kept local and fresh-runner evidence separate, documented the newer Mr. Boxington action's target-payload default and the merged registry-mapping fix without claiming a local retest, narrowed the cold-cache causal interpretation, and recorded the OpenDAL 0.59.0 GHA finalization and S3 Express updates against the sccache 0.17.0 dependency. The blanket directory-bucket conditional-PUT restriction is not retained; qualify the exact client and operation.
 - Basis: [Mr. Boxington evidence](../evidence/mr-boxington-vs-sccache.md), [Kache source status](../reference/vendor-ci-cache-sources.md#kache-not-tested), and [versioned source refresh](../reference/compiler-cache-implementation.md#release-refresh-2026-09-06). No new workload benchmark or cloud deployment was performed for this integration.
 
+### Documentation scope — Separate open-source implementation from broad research coverage
+
+- Changed: 2026-09-06.
+- Prior scope: The archive centered its practical guidance on an existing RunsOn deployment without an explicit source-availability boundary for each component.
+- Current scope: Future practical implementation targets open-source components used directly in GitHub Actions. Provider-dependent/closed-service, other-platform, and unstable-feature documentation remains in the research/reference coverage. Existing measured conclusions retain their original RunsOn context; public action/template code does not establish an entirely open-source server/agent stack.
+- Basis: Maintainer scope clarification, the [documentation scope](../README.md#scope-and-applicability), and the [RunsOn implementation boundary](../providers/runs-on.md#implementation-boundary). No existing benchmark or implementation was reclassified as newly tested.
+
+### D4, D8, and D11 — Distinguish managed EBS storage and nightly content freshness
+
+- Changed: 2026-09-06.
+- Prior wording: The generic EBS approach was labeled archived without an explicit managed-sticky route. Sticky unavailability and readiness timeout were grouped as setup failures. Checksum freshness had a short `-Z` reference without the new content-fingerprint configuration or a dedicated status record.
+- Current interpretation: D4 refers to the measured custom snapshot implementation; D8 separately tracks managed EBS sticky disks. The [v2.3.1 source contract](../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary) distinguishes explicit unavailable-marker cold fallback from missing configuration, invalid mounts, and deadline errors, despite broader failure wording in the capability docs. D11 keeps Cargo's content-fingerprint work on the nightly watchlist after the September 3 call for testing, with build-script mtimes still a limitation.
+- Basis: [RunsOn sticky disks](https://runs-on.com/docs/runners/capabilities/sticky-disks/), the pinned action sources linked in the contract, and [Cargo's tracking issue](https://github.com/rust-lang/cargo/issues/14136). This is documentation/source clarification; no new cache engine, provider deployment, or nightly benchmark was run.
+
 <!--
 Template for future entries:
 

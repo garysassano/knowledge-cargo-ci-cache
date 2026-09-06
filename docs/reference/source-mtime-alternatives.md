@@ -4,11 +4,11 @@ This page preserves source-mtime approaches relevant to conditional whole-target
 
 ## Comparison
 
-| Approach | What it does | Notes |
-| --- | --- | --- |
-| [`chetan/git-restore-mtime-action`](https://github.com/chetan/git-restore-mtime-action) | Rewrites checked-out file mtimes from Git history, usually requiring `fetch-depth: 0`. | Can reduce false rebuilds from checkout mtime churn, but uses synthetic commit-time mtimes rather than preserving the previous CI worktree's mtimes. |
-| [Retimer-style cached mtime state](https://gist.github.com/tmm1/0ec42a8a12bf78ece7a43ec6204cbdc3) | Saves prior source mtimes and restores them before running Cargo when file contents still match. | Closer to the cached-worktree idea, but adds another state file/cache to maintain and did not eliminate every rebuild in the linked report. |
-| [Cargo checksum freshness](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#checksum-freshness) | Nightly Cargo's `-Z checksum-freshness` replaces file mtimes in Cargo fingerprints with checksums. | Promising for CI source checkout churn, but still unstable; build-script-ingested files continue to use mtimes. |
+| Approach                                                                                                       | What it does                                                                                     | Notes                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`chetan/git-restore-mtime-action`](https://github.com/chetan/git-restore-mtime-action)                        | Rewrites checked-out file mtimes from Git history, usually requiring `fetch-depth: 0`.           | Can reduce false rebuilds from checkout mtime churn, but uses synthetic commit-time mtimes rather than preserving the previous CI worktree's mtimes. |
+| [Retimer-style cached mtime state](https://gist.github.com/tmm1/0ec42a8a12bf78ece7a43ec6204cbdc3)              | Saves prior source mtimes and restores them before running Cargo when file contents still match. | Closer to the cached-worktree idea, but adds another state file/cache to maintain and did not eliminate every rebuild in the linked report.          |
+| [Cargo checksum freshness](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#checksum-freshness) | Nightly content fingerprints replace covered mtime comparisons with checksums.                   | Still unstable; see the [canonical research page](../research/cargo-freshness-alternatives.md) for current configuration and coverage.               |
 
 These alternatives mainly target source mtime churn. They do not fix `rust-cache` exact-hit behavior where stale workspace target state is restored and not saved again because the target cache key ignores workspace source contents.
 
@@ -34,18 +34,4 @@ This is useful evidence that correcting source mtimes can remove one class of fa
 
 ## Cargo Checksum Freshness
 
-The official [Cargo nightly documentation](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#checksum-freshness) describes `-Z checksum-freshness` as replacing file mtimes in Cargo fingerprints with file checksum values. It is explicitly intended for environments with poor mtime behavior and for CI/CD.
-
-```bash
-cargo +nightly -Z checksum-freshness build --locked
-```
-
-This directly addresses source files receiving new mtimes during checkout, but it is not yet a drop-in stable replacement for the approaches in this archive:
-
-- It requires nightly Cargo and an unstable `-Z` flag.
-- The checksum algorithm may change without notice between Cargo versions, so restored fingerprints should use the same Cargo version.
-- Files consumed by build scripts continue to use mtimes for now.
-- It changes freshness detection; it does not restore missing artifacts, dep-info, fingerprints, build-script outputs, or other cache state.
-- It does not change `rust-cache` target-key or exact-hit save behavior.
-
-Follow the official [tracking issue `cargo#14136`](https://github.com/rust-lang/cargo/issues/14136) for stabilization and build-script coverage. The original implementation is [`cargo#14137`](https://github.com/rust-lang/cargo/pull/14137).
+The [Cargo freshness alternatives page](../research/cargo-freshness-alternatives.md) owns the reviewed nightly `build.fingerprint = "content"` configuration, stabilization status, build-script exception, related features, and qualification procedure. It changes the freshness algorithm rather than preserving or synthesizing source mtimes. It remains untested here and is not part of the stable default.

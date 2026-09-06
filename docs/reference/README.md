@@ -10,7 +10,7 @@ This section keeps dense technical details that are useful for maintenance, revi
 | [Cargo Freshness Signals](cargo-freshness-signals.md)             | Detailed Cargo freshness table, path notes, local target examples, dep-info example, and fingerprint example.                        |
 | [Mise Tool Setup Details](mise-tool-setup-details.md)             | Detailed `mise-action` environment behavior, config discovery notes, diagram, historical failure, and upstream references.           |
 | [RunsOn Cache And Disk Details](runson-cache-and-disk-details.md) | Archive, direct S3 compiler-cache, sticky-disk, snapshot, lifecycle, and trust-boundary details.                                     |
-| [Source Mtime Alternatives](source-mtime-alternatives.md)         | Related source-mtime approaches, Retimer evidence, and Cargo checksum-freshness notes.                                               |
-| [Rust CI Cache Ecosystem Sources](vendor-ci-cache-sources.md)     | Maintained catalog of first-party projects, actions, provider integrations, technical articles, and historical wrappers.             |
+| [Source Mtime Alternatives](source-mtime-alternatives.md)         | Source retiming approaches and Retimer evidence; routes unstable content fingerprints to research.                                   |
+| [Rust CI Cache Ecosystem Sources](vendor-ci-cache-sources.md)     | Core upstream projects, action forks, and historical sources; provider articles have their own index.                                |
 
 Use these pages as supporting detail. Current recommendations still live in [Decisions](../decisions/README.md), approach selection lives in [Approaches](../approaches/README.md), and measured results live in [Evidence](../evidence/README.md).

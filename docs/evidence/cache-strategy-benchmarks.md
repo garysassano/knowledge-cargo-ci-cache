@@ -206,7 +206,7 @@ Higher peak network capacity and local NVMe did not improve this workload. The r
 ## Implications
 
 - Use [Clean Target: No Cache Or Cargo Inputs Only](../approaches/clean-target.md) as the safe baseline.
-- Use [S3-Backed `sccache`](../approaches/sccache.md) as the leading compiler-cache canary for changing PR workloads.
+- Use [S3-Backed `sccache`](../tools/sccache.md) as the leading compiler-cache canary for changing PR workloads.
 - Use [`Swatinem/rust-cache` with mtime-preserving checkout](../approaches/rust-cache-mtime-checkout.md) and the [source-keyed target workaround](../approaches/rust-cache-source-keyed-target-cache.md) only as conditional whole-target designs with explicit size and timing guardrails, given the growth behavior in [Target Archive Growth In Production](target-archive-growth.md).
 - Evaluate [RunsOn sticky disks](../deployments/runs-on/README.md#sticky-disk-options) only after the required platform upgrade and with native-disk lifecycle controls.
 - Follow [Measuring Cache Performance](../operations/measuring-cache-performance.md) when reproducing or extending these comparisons.

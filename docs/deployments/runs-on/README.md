@@ -4,14 +4,14 @@ This page maps the repository's cache approaches onto RunsOn. It owns RunsOn run
 
 ## Choose A Platform Shape
 
-| Situation | RunsOn shape | Status | Example |
-| --- | --- | --- | --- |
-| Establish a safe PR-CI baseline | Mise-managed tools, input-only `Swatinem/rust-cache` through Magic Cache, ephemeral local `target/`, and normal checkout | Recommended practical default; remove the input cache if it does not pay for itself | [`runs-on-mise-rust-cache.yml`](../../../examples/workflows/runs-on-mise-rust-cache.yml) |
-| Reuse compiler outputs across changing commits | Ephemeral local `target/` with direct S3 `sccache` in default server mode; omit a separate Cargo-input archive unless measured downloads justify it | Leading measured canary | [`runs-on-sccache-canary.yml`](../../../examples/workflows/runs-on-sccache-canary.yml) |
-| Persist Cargo registry and Git inputs without archives | RunsOn sticky disk with built-in `rust` mode | Test after RunsOn v3.2 upgrade | [Sticky-Disk Options](#sticky-disk-options) |
-| Preserve a native target filesystem | Sticky disk with built-in `rust` mode and a custom target path | Higher-complexity fallback experiment | [Sticky-Disk Options](#sticky-disk-options) |
-| Repeat an exact, stable workload with a small target tree | Whole-target archive through Magic Cache with source/build identity in the restore lineage | Conditional narrow option | [`rust-cache-mtime-checkout.yml`](../../../examples/workflows/rust-cache-mtime-checkout.yml) |
-| Preserve a complete filesystem with explicit lifecycle ownership | Local EBS snapshot action and mounted snapshot root | Archived alternative | [`ebs-snapshot.yml`](../../../examples/workflows/ebs-snapshot.yml) |
+| Situation                                                        | RunsOn shape                                                                                                                                        | Status                                                                              | Example                                                                                      |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Establish a safe PR-CI baseline                                  | Mise-managed tools, input-only `Swatinem/rust-cache` through Magic Cache, ephemeral local `target/`, and normal checkout                            | Recommended practical default; remove the input cache if it does not pay for itself | [`runs-on-mise-rust-cache.yml`](../../../examples/workflows/runs-on-mise-rust-cache.yml)     |
+| Reuse compiler outputs across changing commits                   | Ephemeral local `target/` with direct S3 `sccache` in default server mode; omit a separate Cargo-input archive unless measured downloads justify it | Leading measured canary                                                             | [`runs-on-sccache-canary.yml`](../../../examples/workflows/runs-on-sccache-canary.yml)       |
+| Persist Cargo registry and Git inputs without archives           | RunsOn sticky disk with built-in `rust` mode                                                                                                        | Test after RunsOn v3.2 upgrade                                                      | [Sticky-Disk Options](#sticky-disk-options)                                                  |
+| Preserve a native target filesystem                              | Sticky disk with built-in `rust` mode and a custom target path                                                                                      | Higher-complexity fallback experiment                                               | [Sticky-Disk Options](#sticky-disk-options)                                                  |
+| Repeat an exact, stable workload with a small target tree        | Whole-target archive through Magic Cache with source/build identity in the restore lineage                                                          | Conditional narrow option                                                           | [`rust-cache-mtime-checkout.yml`](../../../examples/workflows/rust-cache-mtime-checkout.yml) |
+| Preserve a complete filesystem with explicit lifecycle ownership | Local EBS snapshot action and mounted snapshot root                                                                                                 | Archived alternative                                                                | [`ebs-snapshot.yml`](../../../examples/workflows/ebs-snapshot.yml)                           |
 
 Do not combine archive-managed and sticky/snapshot-managed ownership of the same Cargo paths. The canonical compatibility rule is in [Cargo Path Coverage](../../concepts/cargo-path-coverage.md#compatibility-rule-canonical).
 
@@ -91,7 +91,7 @@ Confirm lifecycle expiry, request volume, object growth, cache errors, and rollb
 
 ## Sticky-Disk Options
 
-Sticky disks preserve a native EBS filesystem through snapshots and avoid tar/zstd archive extraction and recompression. The disk is bounded by its configured size, but Cargo artifacts can still accumulate until cleanup or reset.
+RunsOn now provides [managed sticky disks](https://runs-on.com/docs/runners/capabilities/sticky-disks/) for the EBS approach: a per-job native filesystem is restored and preserved through EBS snapshots, avoiding tar/zstd archive extraction and recompression. The current documentation positions this as the successor to `runs-on/snapshot@v1`; the archive's [custom snapshot implementation](../../approaches/ebs-snapshot.md) remains separate historical evidence. The disk is bounded by its configured size, but Cargo artifacts can still accumulate until cleanup or reset.
 
 The runner requests a named disk lineage with an illustrative size:
 
@@ -135,6 +135,8 @@ Before enabling a custom target:
 
 The dense lineage, fallback, expiry, free-space, and last-writer semantics are in [RunsOn Cache And Disk Details](../../reference/runson-cache-and-disk-details.md). A [proposed Cargo sticky-disk workflow](../../research/runs-on-sccache/sticky-cargo-canary.yml) is retained under research and has not been benchmarked. Use it only after verifying the required platform, trusted writer, capacity, and lifecycle controls; promote a copyable canary into the main examples together with its first measurements.
 
+For missing storage, distinguish explicit cold fallback from setup errors using the [v2.3.1 failure contract](../../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary). These source checks do not qualify a managed sticky-target benchmark.
+
 ## Conditional Whole-Target Archives
 
 Magic Cache can still back a whole-target `rust-cache` or separate `actions/cache` entry, but the backend does not make a growing target archive cheap to serialize.
@@ -174,7 +176,7 @@ Before changing this deployment map, verify the current RunsOn stack requirement
 - [Decisions](../../decisions/README.md)
 - [Approaches](../../approaches/README.md)
 - [Clean Target](../../approaches/clean-target.md)
-- [S3-Backed `sccache`](../../approaches/sccache.md)
+- [S3-Backed `sccache`](../../tools/sccache.md)
 - [RunsOn Cache And Disk Details](../../reference/runson-cache-and-disk-details.md)
 - [Measuring Cache Performance](../../operations/measuring-cache-performance.md)
 - [Target Archive Growth In Production](../../evidence/target-archive-growth.md)

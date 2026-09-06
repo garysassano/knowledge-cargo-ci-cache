@@ -4,6 +4,8 @@ These examples are intentionally generic. They are meant to preserve the workflo
 
 For CI tool setup, prefer inline `mise_toml` with `jdx/mise-action`; see [Mise Tool Setup](../docs/operations/mise-tool-setup.md). The workflow examples focus on Cargo cache layouts and may omit project-specific tool installation details.
 
+Unmeasured workflow designs stay with [Research](../docs/research/README.md). The [draft sticky Cargo canary](../docs/research/runs-on-sccache/sticky-local-tier.md#cargo-persistence-experiment) has qualification requirements and is not a measured example.
+
 ## Workflows
 
 | Example | Purpose | Referenced by |

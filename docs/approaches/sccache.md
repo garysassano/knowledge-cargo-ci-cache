@@ -13,8 +13,10 @@
 | File | Purpose |
 | --- | --- |
 | [RunsOn `sccache` canary workflow](../../examples/workflows/runs-on-sccache-canary.yml) | Generic trusted-writer canary without a separate Cargo-input archive and with compiler-cache statistics. |
+| [Mr. Boxington comparison](mr-boxington.md) | Experimental alternative with separate local and fresh-runner evidence. |
+| [RunsOn research](../research/runs-on-sccache/README.md) | Proposed lifecycle, transport, persistence, and performance work; not current features. |
 | [RunsOn deployment](../deployments/runs-on/README.md) | Direct S3 configuration, namespace, IAM, and runner-specific notes. |
-| [Vendor Rust and CI cache sources](../reference/vendor-ci-cache-sources.md) | External direct-object, near-cache-service, colocated archive-cache, and persistent-runner designs. |
+| [Rust CI cache ecosystem sources](../reference/vendor-ci-cache-sources.md) | External direct-object, near-cache-service, colocated archive-cache, persistent-runner, and compiler-wrapper designs. |
 
 ## Design
 
@@ -110,11 +112,7 @@ Even a perfect cacheable hit rate leaves:
 
 ## Evidence
 
-In the controlled benchmark, warm S3 `sccache` with input-only Cargo caching was about 21% faster end to end and 41% faster in the build step than no Rust cache. It produced 1,410 hits, zero misses in the corrected warm runs, 442 non-cacheable calls, and zero cache errors.
-
-A later representative full-workload warm repeat using `sccache` 0.17.0 in default server mode reduced workload time from 21m20.929s to 10m11.120s and job time from 22m45s to 11m42s against the same-profile no-cache control. The preceding population run took 25m54.103s of workload time and wrote 5,599 objects, making it about 21% slower than no cache. Those runs and the later client-side, read-only, and multilevel trials all included input-only `Swatinem/rust-cache`; only the subsequent default-server ablation omitted it. The ablation retained 6,929 hits and zero misses and completed in 9m50.353s workload and 11m14s job time. That single cross-family observation was about 21 seconds faster in the workload and 28 seconds faster in the job, so it supports omitting the separate input archive by default but does not establish a stable effect size or prove direct interference between the actions. See [Cache Strategy Benchmarks](../evidence/cache-strategy-benchmarks.md).
-
-Follow-up `sccache` 0.17.0 trials found that client-side direct S3 was not faster: the warm workload took 20m59.720s despite 6,661 hits and only 110 misses. A cold read-only control remained 16.9% slower than no cache, showing that hashing, remote miss lookup, wrapper, and miss-handling costs accounted for most of the observed cold regression rather than successful uploads alone. Client-side `disk,s3` also did not improve cold population, only 5,197 of 5,447 expected background S3 writes completed before teardown, and its warm partial repeat took 20m42.113s despite 6,521 hits.
+The [cache-strategy benchmarks](../evidence/cache-strategy-benchmarks.md) record the strong default-server warm result, cold-population regression, input-archive ablation, slower client-side modes, and incomplete multilevel writes. The read-only control shows that successful uploads were not the sole cold penalty; wrapper, hashing, remote lookup, compiler interaction, and run variance were not isolated. The [Mr. Boxington comparison](../evidence/mr-boxington-vs-sccache.md) adds separate local and containerized fresh-runner observations. Use those pages for timings and limitations.
 
 ## Decision
 

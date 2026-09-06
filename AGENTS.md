@@ -21,14 +21,24 @@ Use the routing table below to load only the pages relevant to the task instead 
 | Explain cache primitives | `docs/concepts/cache-primitives.md` |
 | Explain `Swatinem/rust-cache` inputs and cleanup | `docs/concepts/rust-cache-behavior.md` |
 | Diagnose rebuilds | `docs/operations/diagnosing-rebuilds.md` |
+| Compare Mr. Boxington with sccache | `docs/approaches/mr-boxington.md` and `docs/evidence/mr-boxington-vs-sccache.md` |
+| Diagnose compiler-cache setup, Docker paths, or ineffective exact restores | `docs/operations/diagnosing-compiler-cache-integration.md` |
+| Find Kache and provider documentation/blog posts | `docs/reference/vendor-ci-cache-sources.md` |
+| Explore unimplemented RunsOn sccache improvements | `docs/research/runs-on-sccache/README.md` |
 | Review measured evidence | `docs/evidence/README.md` |
 | Read detailed freshness signals, examples, or historical notes | `docs/reference/README.md` |
-| Review vendor Rust, `sccache`, or GitHub Actions cache sources | `docs/reference/vendor-ci-cache-sources.md` |
+| Review Rust CI cache ecosystem sources | `docs/reference/vendor-ci-cache-sources.md` |
 | Record machine-readable cache measurements | `docs/reference/cache-measurement-schema.md` |
 | Refresh examples and assumptions | `docs/operations/maintenance-checklist.md` |
 | Copy workflow shapes | `examples/README.md` and `examples/workflows/` |
 | Understand the local snapshot fork | `examples/actions/snapshot/README.md` |
 | Understand the S3 Files mount action | `examples/actions/s3-files-mount/action.yml` |
+
+## Retrieval and claim handling
+
+Read the current decisions and the relevant category index first, then load only the focused pages needed. Use `rg` for exact tool names, errors, decision IDs, and version strings. Follow evidence links before quoting timings; retain workload, version, cache state, sample count, and limitations.
+
+Keep four claim classes distinct: measured evidence, pinned source behavior, inference, and proposal. Material under `docs/research/` is proposed or untested unless a page explicitly identifies a measured result and links its evidence. External benchmarks and provider blog posts are source material, not measurements performed by this archive. A newer action major or binary release does not retroactively update old measurements.
 
 ## Current Conclusions
 
@@ -47,7 +57,9 @@ Treat the conclusions as archived, not as timeless upstream facts. Before changi
 - Keep dense technical details, long tables, historical notes, and official-reference collections in `docs/reference/` when they would make first-read pages heavy.
 - Keep RunsOn runner, Magic Cache, direct S3 `sccache`, and sticky-disk guidance in `docs/deployments/runs-on/README.md`, and keep generic Cargo guidance out of it; the deployment links to the canonical approach, concept, and operation pages instead of copying their configuration.
 - Keep sanitized measurement records as JSONL in `docs/evidence/data/` beside the evidence page that cites them; keep the record contract in `docs/reference/cache-measurement-schema.md` and the copyable synthetic example in `examples/measurements/`.
-- Keep copyable workflow examples in `examples/workflows/`.
+- Keep supported copyable workflow examples in `examples/workflows/`; keep explicitly unmeasured workflow designs under `docs/research/` with their qualification requirements.
+- Keep proposals, unresolved implementation dependencies, and promotion gates in focused pages under `docs/research/`; link to them without presenting proposed interfaces as released features.
+- Keep the compact measurement contract in `docs/reference/cache-measurement-schema.md` and dense field definitions in `docs/reference/cache-measurement-fields.md`.
 - Link to canonical pages instead of repeating long tables or result summaries.
 
 ## Page Conventions
@@ -86,6 +98,8 @@ Run these checks after relevant edits:
 git diff --check
 actionlint examples/workflows/*.yml
 yq eval-all --exit-status 'true' examples/workflows/*.yml examples/actions/*/action.yml
+actionlint docs/research/runs-on-sccache/*.yml
+yq eval-all --exit-status 'true' docs/research/runs-on-sccache/*.yml
 (cd examples/actions/snapshot && go test ./...)
 ```
 

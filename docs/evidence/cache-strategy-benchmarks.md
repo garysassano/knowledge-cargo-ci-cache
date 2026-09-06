@@ -182,7 +182,7 @@ Higher peak network capacity and local NVMe did not improve this workload. The r
 - No Rust cache is a credible baseline whenever input-cache setup is close to the download time it avoids.
 - S3-backed `sccache` in 0.17 default server mode is the strongest measured PR-CI candidate because its warm full-workload repeat roughly halved end-to-end time without reconstructing a complete historical target tree.
 - A separate input-only `Swatinem/rust-cache` step did not improve compiler-cache reuse beside warm `sccache`; the one measured ablation without it was directionally faster, so omit it unless dependency-download timing justifies the extra archive.
-- Cold `sccache` population is a real regression, but the read-only control shows that successful uploads do not explain most of the penalty. A deployment needs a trusted canonical population policy, lifecycle management, and an explicit clean-compilation rollback.
+- Cold `sccache` population is a real regression, but the read-only control shows that successful uploads are not the sole penalty; the other costs and run variance were not isolated. A deployment needs a trusted canonical population policy, lifecycle management, and an explicit clean-compilation rollback.
 - `SCCACHE_CLIENT_SIDE=1` was not a performance improvement for the measured direct-S3 workload despite a high warm hit rate.
 - Client-side `disk,s3` background writes did not improve the cold trial, were not fully durable by job teardown, and produced only a small warm improvement over no cache on an ephemeral runner.
 - A high hit rate is not an adoption metric. Cargo orchestration, per-object lookup and materialization, build scripts, procedural macros, non-cacheable calls, and final linking remain on the critical path.

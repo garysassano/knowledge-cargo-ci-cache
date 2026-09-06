@@ -59,6 +59,8 @@ compress all selected contents
 save a new immutable object after a miss or partial restore
 ```
 
+The [RunsOn Magic Cache documentation](https://runs-on.com/docs/performance/caching/actions/), rechecked on September 6, 2026, describes a fixed S3 Lifecycle window with a 10-day default and expiration rounded up to the next midnight UTC. Restoring an object does not renew that window, so the default schedule retains a newly created object for about 10–11 days rather than 10 days since its last use.
+
 Backend lifecycle deletes complete old objects. It cannot remove stale files from the active object. More storage capacity, shorter retention, a faster S3 link, or a new key prefix does not eliminate extraction and recompression of a large current archive.
 
 GitHub cache inventory commands are not necessarily the operational control plane for a third-party S3-backed cache object. Confirm deletion, expiration, and object size against the configured RunsOn backend rather than assuming the GitHub cache API can see or remove it.

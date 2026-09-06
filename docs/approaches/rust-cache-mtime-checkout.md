@@ -92,6 +92,12 @@ The cached worktree checkout avoids that false invalidation:
 
 `Swatinem/rust-cache` then handles Cargo home and dependency-oriented target state.
 
+## Worktree Hygiene
+
+The supplied cached-worktree action uses `git checkout --detach --force`, but it does not run `git clean`. Checkout overwrites tracked paths; untracked or generated files can survive inside the persisted worktree across source states.
+
+Keep build outputs and other mutable caches outside the cached source worktree. If a workload requires clean untracked state, add a reviewed cleanup policy after checkout, such as `git clean -fd`; add `-x` only when deleting ignored files is intentional and safe. Never persist credentials or other secrets in the worktree cache.
+
 ## Recommended Settings
 
 ```yaml
@@ -151,6 +157,7 @@ For every target archive:
 - `rust-cache` target keys intentionally do not include workspace source contents.
 - Exact cache hits can restore stale workspace artifacts and then skip saving rebuilt target state.
 - Affected local path workspace members can therefore rebuild repeatedly in some jobs.
+- The sample checkout preserves untracked and ignored files unless the workflow adds an explicit cleanup policy.
 - Every immutable source lineage consumes storage until backend expiration.
 
 ## Related Alternatives

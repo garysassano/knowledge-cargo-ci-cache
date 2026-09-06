@@ -37,3 +37,5 @@ After RunsOn v3.2, test sticky Cargo inputs before a custom sticky target. Keep 
 Cargo can skip compilation only when source inputs, source mtimes, workspace paths, target artifacts, dep-info, fingerprints, build-script outputs, dependency source paths, toolchain, flags, profile, features, and relevant environment agree with each other.
 
 The short explanation is [Cargo Freshness Model](concepts/cargo-freshness-model.md). The detailed signal table is [Cargo Freshness Signals](reference/cargo-freshness-signals.md).
+
+For other compiler wrappers, see the [experimental Mr. Boxington approach](approaches/mr-boxington.md) and [untested Kache entry](reference/vendor-ci-cache-sources.md#kache-not-tested). Provider documentation and blog posts live in the [ecosystem catalog](reference/vendor-ci-cache-sources.md); proposed RunsOn improvements live under [Research](research/README.md).

@@ -133,7 +133,7 @@ Before enabling a custom target:
 - Test successful, failed, and cancelled jobs, disk wait failures, default-branch fallback, and reset behavior.
 - Keep the sticky disk as the sole owner of the target and Cargo-input paths it mounts.
 
-The dense lineage, fallback, expiry, free-space, and last-writer semantics are in [RunsOn Cache And Disk Details](../../reference/runson-cache-and-disk-details.md). There is no committed canary workflow for this option yet; build one from the snippets above once the v3.2 upgrade lands, and commit it together with its first measurements.
+The dense lineage, fallback, expiry, free-space, and last-writer semantics are in [RunsOn Cache And Disk Details](../../reference/runson-cache-and-disk-details.md). A [proposed Cargo sticky-disk workflow](../../research/runs-on-sccache/sticky-cargo-canary.yml) is retained under research and has not been benchmarked. Use it only after verifying the required platform, trusted writer, capacity, and lifecycle controls; promote a copyable canary into the main examples together with its first measurements.
 
 ## Conditional Whole-Target Archives
 
@@ -179,3 +179,7 @@ Before changing this deployment map, verify the current RunsOn stack requirement
 - [Measuring Cache Performance](../../operations/measuring-cache-performance.md)
 - [Target Archive Growth In Production](../../evidence/target-archive-growth.md)
 - [Cache Strategy Benchmarks](../../evidence/cache-strategy-benchmarks.md)
+
+## Proposed improvements
+
+The [RunsOn sccache research index](../../research/runs-on-sccache/README.md) routes versioned implementation details, the performance roadmap, action lifecycle, trust/publication, gateway, sticky compiler objects, alternative backends, and promotion gates. These are proposals and untested integrations; use the workflow shapes above for the existing deployment.

@@ -1,6 +1,6 @@
 # RunsOn sccache research
 
-Status: Proposed designs and experiments. Use the [current deployment](../../deployments/runs-on/README.md), [sccache approach](../../approaches/sccache.md), and [decisions](../../decisions/README.md) for implementation and adoption. Verified behavior and the dated release refresh live in the [implementation reference](../../reference/compiler-cache-implementation.md); the [planning model](../../evidence/cache-strategy-benchmarks.md#planning-model) is an inference from archived measurements.
+Status: Proposed designs and experiments. Use the [current deployment](../../deployments/runs-on/README.md), [sccache approach](../../tools/sccache.md), and [decisions](../../decisions/README.md) for implementation and adoption. Verified behavior and the dated release refresh live in the [implementation reference](../../reference/compiler-cache-implementation.md); the [planning model](../../evidence/cache-strategy-benchmarks.md#planning-model) is an inference from archived measurements.
 
 This collection explores lower cold-cache overhead, cross-job compiler-object reuse, visible storage failures, and shared-cache ownership. Retrieve the page for the question at hand; copying the existing workflow does not require loading this design.
 

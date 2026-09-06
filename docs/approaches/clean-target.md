@@ -2,11 +2,11 @@
 
 ## Summary
 
-| Field | Value |
-| --- | --- |
-| Status | Recommended practical default with a no-cache control |
-| Use when | PR workloads change frequently, whole-target archives are large or unstable, or a simple control is needed before adding compiler caching. |
-| Main tradeoff | Every job recreates `target/`; input-only caching avoids downloads but not compilation. |
+| Field         | Value                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Status        | Recommended practical default with a no-cache control                                                                                      |
+| Use when      | PR workloads change frequently, whole-target archives are large or unstable, or a simple control is needed before adding compiler caching. |
+| Main tradeoff | Every job recreates `target/`; input-only caching avoids downloads but not compilation.                                                    |
 
 ## Design
 
@@ -26,12 +26,12 @@ Neither variant attempts to preserve Cargo fingerprints, build-script outputs, f
 
 ## Choosing Between The Two Variants
 
-| Situation | Prefer |
-| --- | --- |
-| Dependency downloads are material and the input archive remains small | Input-only `Swatinem/rust-cache` |
-| Cache setup is effectively tied with downloading inputs | No Rust cache |
-| The `rust-cache` post step still performs material target cleanup | No Rust cache or an explicit Cargo-home-only `actions/cache` entry |
-| You need a control for a target-cache or `sccache` experiment | No Rust cache |
+| Situation                                                             | Prefer                                                             |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Dependency downloads are material and the input archive remains small | Input-only `Swatinem/rust-cache`                                   |
+| Cache setup is effectively tied with downloading inputs               | No Rust cache                                                      |
+| The `rust-cache` post step still performs material target cleanup     | No Rust cache or an explicit Cargo-home-only `actions/cache` entry |
+| You need a control for a target-cache or `sccache` experiment         | No Rust cache                                                      |
 
 The input-only shape is a reasonable operational default even before extensive benchmarking because it does not persist mutable target state. When results are statistically indistinguishable, prefer no Rust cache because it has fewer keys, save races, archives, and backend dependencies.
 
@@ -99,4 +99,4 @@ The [cache strategy benchmarks](../evidence/cache-strategy-benchmarks.md) record
 
 ## Decision
 
-For most RunsOn Rust projects, use mise with Magic Cache, input-only `rust-cache`, and a clean local target as the pragmatic starting point. Keep a no-cache control, remove the input cache when representative measurements show no material benefit, and add [`sccache`](sccache.md) only when compiler-output reuse materially improves end-to-end time.
+For most RunsOn Rust projects, use mise with Magic Cache, input-only `rust-cache`, and a clean local target as the pragmatic starting point. Keep a no-cache control, remove the input cache when representative measurements show no material benefit, and add [`sccache`](../tools/sccache.md) only when compiler-output reuse materially improves end-to-end time.

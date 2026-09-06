@@ -2,17 +2,17 @@
 
 ## Summary
 
-| Field | Value |
-| --- | --- |
-| Status | Conditional narrow target-archive option |
-| Use when | A stable workload reruns the same source state, the archive remains small, and measured restore/save is cheaper than recompilation. |
-| Main tradeoff | Full-tree archive extraction/compression and imperfect cleanup can erase the benefit as target state grows. |
+| Field         | Value                                                                                                                               |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Status        | Conditional narrow target-archive option                                                                                            |
+| Use when      | A stable workload reruns the same source state, the archive remains small, and measured restore/save is cheaper than recompilation. |
+| Main tradeoff | Full-tree archive extraction/compression and imperfect cleanup can erase the benefit as target state grows.                         |
 
 ## Related Files
 
-| File | Purpose |
-| --- | --- |
-| [Workflow example](../../examples/workflows/rust-cache-mtime-checkout.yml) | End-to-end workflow using a cached worktree with `Swatinem/rust-cache`. |
+| File                                                                                 | Purpose                                                                                            |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| [Workflow example](../../examples/workflows/rust-cache-mtime-checkout.yml)           | End-to-end workflow using a cached worktree with `Swatinem/rust-cache`.                            |
 | [Cached worktree action](../../examples/actions/cached-worktree-checkout/action.yml) | Composite action that checks out into a restored worktree without rewriting unchanged file mtimes. |
 
 ## Design
@@ -176,4 +176,4 @@ Use this only when all of the following hold:
 - Exact source/build-state lineage is acceptable.
 - The archive is small and monitored.
 - Restore and save remain cheaper than clean compilation.
-- A clean target with optional [`sccache`](sccache.md) has been measured and is not the better fit.
+- A clean target with optional [`sccache`](../tools/sccache.md) has been measured and is not the better fit.

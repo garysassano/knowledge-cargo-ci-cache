@@ -14,7 +14,7 @@ RunsOn's built-in sticky `rust` mode persists Cargo registry and Git directories
 
 The existing evidence shows why persistence is necessary for a useful cross-job L0, but it does not prove that a sticky L0 will outperform direct S3 after snapshot restore, commit, GC, and concurrency costs.
 
-Released sticky disks require RunsOn v3.2 or later. Set `sticky_wait_timeout: 15m` explicitly: an unavailable disk, missing readiness marker, or timeout can fail job setup before an `sccache` wrapper fallback has a chance to run. Inactive lineages expire after ten days, so a valid design must treat unexpected cold restoration as normal platform behavior rather than corruption.
+Released sticky disks require RunsOn v3.2 or later. Set `sticky_wait_timeout: 15m` explicitly and distinguish terminal unavailability from missing agent configuration or a readiness timeout: v2.3.1 continues cold only for the explicit unavailable marker. The [versioned failure contract](../../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary) owns the source/documentation discrepancy and expected states. Inactive lineages expire after ten days, so unexpected cold restoration is normal platform behavior rather than proof of corruption.
 
 ## Candidate shapes
 

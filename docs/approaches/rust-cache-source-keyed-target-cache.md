@@ -2,16 +2,16 @@
 
 ## Summary
 
-| Field | Value |
-| --- | --- |
-| Status | Narrow exception; freshness behavior proven, growth safety requires separate measurement |
-| Use when | Affected local path workspace members repeatedly rebuild, repeated identical-source runs matter, and a small exact source-keyed target archive is justified. |
-| Main tradeoff | Full-target serialization, strict restore ordering, broad source invalidation, and immutable-object storage. |
+| Field         | Value                                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Status        | Narrow exception; freshness behavior proven, growth safety requires separate measurement                                                                     |
+| Use when      | Affected local path workspace members repeatedly rebuild, repeated identical-source runs matter, and a small exact source-keyed target archive is justified. |
+| Main tradeoff | Full-target serialization, strict restore ordering, broad source invalidation, and immutable-object storage.                                                 |
 
 ## Related Files
 
-| File | Purpose |
-| --- | --- |
+| File                                                                                  | Purpose                                                                               |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | [Workflow example](../../examples/workflows/rust-cache-source-keyed-target-cache.yml) | Splits Cargo home and source-keyed target caching with the required restore ordering. |
 
 ## Problem It Solves
@@ -175,4 +175,4 @@ Use this workaround if:
 - Repeated runs of the same source state are common enough to pay for full archive restore.
 - The archive remains small, exact-keyed, and monitored.
 
-Do not use it as a general PR cache with a broad source-independent restore prefix. Retire or simplify it if upstream `rust-cache` adds equivalent source-keyed target caching, or if clean `target/` with [`sccache`](sccache.md) wins the end-to-end comparison.
+Do not use it as a general PR cache with a broad source-independent restore prefix. Retire or simplify it if upstream `rust-cache` adds equivalent source-keyed target caching, or if clean `target/` with [`sccache`](../tools/sccache.md) wins the end-to-end comparison.

@@ -1,6 +1,6 @@
 # Maintenance Checklist
 
-Use this checklist when refreshing the archive or copying its examples into a live repository.
+Use this checklist when refreshing the archive or copying its examples into a live repository. For new material, first follow the [AGENTS ingestion checklist](../../AGENTS.md#ingesting-new-information), including applicability, ownership, storage mapping, and source status.
 
 ## Decisions
 
@@ -21,7 +21,7 @@ Use this checklist when refreshing the archive or copying its examples into a li
 
 - Re-check `Swatinem/rust-cache` release notes before changing the recommendation, especially around target keys, `cache-workspace-crates`, incremental state, and save cleanup behavior.
 - Re-check whether the input-only post step still traverses configured target directories on an eligible save even though `cache-targets: false` excludes them from the archive.
-- Re-check the official [Cargo checksum freshness documentation](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#checksum-freshness) and [tracking issue](https://github.com/rust-lang/cargo/issues/14136) before changing source-mtime guidance.
+- Re-check the [freshness watchlist](../research/cargo-freshness-alternatives.md), including the exact configuration gate, stable-release status, and build-script coverage. Re-check the official [Cargo checksum freshness documentation](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#checksum-freshness) and [tracking issue](https://github.com/rust-lang/cargo/issues/14136) before changing source-mtime guidance.
 - Keep the source-keyed target-cache workaround documented until upstream target keys include workspace source state or an equivalent mechanism exists.
 - When using source-keyed target caches, hash source state with the resolved `rustc -Vv` identity, include a manual namespace for remaining build-command semantics, for example `locked-v1-<source-and-compiler-hash>`, and bump the namespace after changing build flags, target triples, profiles, features, or wrappers.
 - Do not add a source-independent fallback for a full target archive. Use separate restore/save actions when one trusted canonical writer is required.
@@ -37,7 +37,7 @@ Use this checklist when refreshing the archive or copying its examples into a li
 
 - Keep RunsOn Magic Cache, direct S3 `sccache`, sticky-disk, support-transition, and current-version checks in [`docs/deployments/runs-on/README.md`](../deployments/runs-on/README.md).
 - Verify the RunsOn stack is v3.2.0 or newer before testing sticky disks.
-- Set `sticky_wait_timeout` explicitly while the documentation and released action metadata disagree on the default.
+- Set `sticky_wait_timeout` explicitly while documentation and released action metadata disagree on the default. Recheck the [versioned failure states](../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary): explicit unavailability, missing configuration, invalid mounts, and timeout need separate assertions.
 - Re-check sticky lineage, default-branch fallback, concurrency, inactive expiry, free-space/inode warnings, automatic reset, and failure/cancellation behavior.
 - Treat Magic Cache protocol isolation and direct S3 IAM as separate boundaries. `SCCACHE_S3_RW_MODE=READ_ONLY` is not a substitute for an IAM-enforced read-only runner role.
 - Confirm lifecycle and inventory against the actual RunsOn S3 backend; do not assume GitHub cache API commands expose every third-party backend object.
@@ -45,7 +45,7 @@ Use this checklist when refreshing the archive or copying its examples into a li
 
 ## Compiler wrappers and research
 
-- Keep compiler-wrapper candidates, provider documentation, and blog posts in the ecosystem catalog. Preserve source URLs when reorganizing it and label untested products explicitly.
+- Keep named implementations and comparisons in [Tools](../tools/README.md), provider capabilities and blog posts in [Providers](../providers/README.md), and unstable features in [Research](../research/README.md). Preserve source URLs when reorganizing and label untested products explicitly. An open-source client and a hosted backend have separate applicability boundaries.
 - Record mbx binary, action version, and GitHub payload mode separately. The current action's `target` default is a different mechanism from `objects`; recheck these inputs before reproducing old compiler-object trials.
 - Keep same-job reuse separate from fresh-runner restore/export, and do not infer compiler reuse from an exact archive hit.
 - Recheck the version of OpenDAL embedded in the tested sccache binary before carrying a fixed upstream limitation forward. Record changed release status in the [implementation reference](../reference/compiler-cache-implementation.md) and decision history.

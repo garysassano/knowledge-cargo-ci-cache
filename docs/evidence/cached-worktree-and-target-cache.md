@@ -49,8 +49,8 @@ Restoring the full target cache before `rust-cache` did not work because `rust-c
 
 Previously slow generated-code and build-script dependency chains became no-op:
 
-| Job type | Cargo result |
-| --- | --- |
+| Job type             | Cargo result                                  |
+| -------------------- | --------------------------------------------- |
 | Generated-code job A | `Finished ... in 0.26s`, no `Compiling` lines |
 | Generated-code job B | `Finished ... in 0.24s`, no `Compiling` lines |
 | Generated-code job C | `Finished ... in 0.31s`, no `Compiling` lines |
@@ -87,7 +87,7 @@ Introducing `--locked` against an older source-only target key caused some works
 - Use an exact source/build-state restore lineage rather than a broad fallback that can copy an older complete target tree forward.
 - Add the workaround only when affected local path workspace members repeatedly rebuild, repeated identical-source runs matter, and the complete archive remains small.
 - Keep the external workaround until upstream `rust-cache` exposes equivalent source-keyed target caching.
-- Compare it against the [clean-target](../approaches/clean-target.md) and [`sccache`](../approaches/sccache.md) approaches using end-to-end measurements.
+- Compare it against the [clean-target](../approaches/clean-target.md) and [`sccache`](../tools/sccache.md) approaches using end-to-end measurements.
 
 ## Related Guidance
 

@@ -1,6 +1,6 @@
 # Compiler-cache implementation reference
 
-Status: Pinned source observations with a release refresh on 2026-09-06. This page owns versioned sccache, OpenDAL, and RunsOn integration behavior. The refresh does not update the versions or outcomes of archived measurements. Use [the sccache approach](../approaches/sccache.md) for selection, [RunsOn deployment](../deployments/runs-on/README.md) for configuration, and [research](../research/runs-on-sccache/README.md) for proposed changes.
+Status: Pinned source observations with a release refresh on 2026-09-06. This page owns versioned sccache, OpenDAL, and RunsOn integration behavior. The refresh does not update the versions or outcomes of archived measurements. Use [the sccache approach](../tools/sccache.md) for selection, [RunsOn deployment](../deployments/runs-on/README.md) for configuration, and [research](../research/runs-on-sccache/README.md) for proposed changes.
 
 ## Release refresh: 2026-09-06
 

@@ -17,17 +17,19 @@ Do not combine archive-managed and sticky/snapshot-managed ownership of the same
 
 ## Version Boundary
 
-The platform facts below were checked on August 20, 2026:
+Live documentation and release-source review: September 6, 2026. The latest published releases checked through the GitHub API were [RunsOn v3.2.3](https://github.com/runs-on/runs-on/releases/tag/v3.2.3) and [action v2.3.1](https://github.com/runs-on/action/releases/tag/v2.3.1). This review did not deploy either version or repeat the archived benchmarks. The [provider source map](../../providers/runs-on.md) lists the language, cache, storage, runner, and maintenance pages checked.
 
 - Sticky disks require RunsOn v3.2.0 or newer.
-- RunsOn v2 is scheduled to enter critical-fixes-only support after September 15, 2026. Treat the v3 migration as a separate infrastructure project with a parallel stack, representative workflow tests, and a rollback window.
-- `runs-on/action@v2` currently exposes sticky-disk and S3 `sccache` configuration. The released action metadata defaults `sticky_wait_timeout` to `15m`, while the sticky-disk documentation still mentions five minutes; set the timeout explicitly.
+- [RunsOn v2 is scheduled to enter critical-fixes-only support after September 15, 2026](https://runs-on.com/blog/runson-v2-deprecation/). Treat the v3 migration as a separate infrastructure project with a parallel stack, representative workflow tests, and a rollback window.
+- `runs-on/action@v2` resolved to v2.3.1 at this review and exposes sticky-disk and S3 `sccache` configuration, including Windows sccache support. The released action metadata defaults `sticky_wait_timeout` to `15m`, while the sticky-disk documentation still mentions five minutes; set the timeout explicitly.
 
 Do not couple the immediate Rust cache choice to a rushed platform migration. Establish the clean-target baseline first, upgrade independently, then test sticky storage.
 
 ## Magic Cache Input-Only Baseline
 
 Magic Cache replaces the backend used by compatible `actions/cache` calls. It improves transport and capacity characteristics, but cached paths are still archived, downloaded, extracted, cleaned by their owning action, and saved as new immutable objects.
+
+The workflow shapes here use Flex per-job labels. For Fleet, configure the capability in the Terraform runner catalog and target the named fleet from workflow YAML; do not copy Flex resource labels into a Fleet job.
 
 Use this order:
 
@@ -80,6 +82,8 @@ RunsOn can export the S3 backend environment and `RUSTC_WRAPPER` for `sccache`:
 ```
 
 With `sccache: s3`, the RunsOn action exports `SCCACHE_BUCKET`, `SCCACHE_REGION`, the stack-wide default `SCCACHE_S3_KEY_PREFIX=cache/sccache`, `SCCACHE_GHA_ENABLED=false`, and `RUSTC_WRAPPER=sccache`. The explicit namespace step is not configuring the backend again; it overrides only `SCCACHE_S3_KEY_PREFIX` to isolate objects by repository, platform, and cache schema. The RunsOn action does not install the `sccache` executable, so keep a separate pinned installer.
+
+The open [sccache-prefix PR #58](https://github.com/runs-on/action/pull/58) proposes an input for this override and a scoped default; `sccache_prefix` is absent from released v2.3.1. Keep the explicit environment step until adopting a release that includes the input. Apply overrides before the installer or any command starts the daemon; a running daemon retains its startup configuration.
 
 Keep `CARGO_INCREMENTAL=0`, leave `target/` on local runner storage, print statistics on every canary, and use a repository/platform/schema-specific prefix instead of the stack-wide default.
 
@@ -154,14 +158,18 @@ Restricting saves to the default branch does not fix a large restore: every read
 
 The local [EBS snapshot approach](../../approaches/ebs-snapshot.md) remains the strongest measured option for complete Cargo no-op fidelity because it preserves the workspace, Cargo home, target, and related filesystem state together. It also requires custom EC2/EBS permissions, snapshot retention, clean mount/unmount handling, concurrency control, and credential scrubbing.
 
+The optional `EnableStickyDiskIsolation` / `enable_stickydisk_isolation` setting removes the runner EBS permissions this legacy action needs. Migrate legacy workflows before enabling it; managed sticky disks continue through control-plane-owned EBS operations.
+
 Prefer supported sticky disks for new post-v3.2 experiments. Keep the local snapshot action as archived evidence and as an explicit fallback when its additional lifecycle control is required.
 
 ## Storage And Isolation Notes
 
-- RunsOn local NVMe is fast current-job storage but is wiped when the instance stops or terminates. It pairs naturally with a disposable target and remote `sccache`; it is not a cross-job cache.
-- EFS and other shared network filesystems avoid archive creation but add remote metadata latency, contention, and cleanup complexity. They are not the first choice for Cargo target state.
-- Magic Cache lifecycle removes complete immutable objects; it does not inspect or prune their contents.
-- RunsOn v3.2 adds optional repository/branch Magic Cache isolation. Enabling it changes the cache namespace and can cause a deliberate cold start. It does not constrain direct S3 clients.
+Use the [storage topology reference](../../concepts/storage-topologies.md) for the generic model and the [RunsOn storage details](../../reference/runson-cache-and-disk-details.md#runner-local-and-shared-storage) for platform-specific mount paths, lifetime, and availability.
+
+- Local instance-store NVMe suits a disposable target with remote compiler objects. It survives reboot but loses data on stop/termination; an NVMe device name alone does not prove instance-store backing.
+- Linux `extras=tmpfs` takes precedence over automatic NVMe placement and competes with compilation for RAM. It provides no cross-job durability by itself.
+- EFS is an explicitly enabled Linux Flex shared filesystem. Verify that it is mounted before writing; the docs describe a missing/disabled mount as silently skipped.
+- Magic Cache isolation and sticky-disk isolation are separate opt-ins. The former scopes protocol credentials; the latter removes legacy runner EBS authority. Neither turns direct S3 prefixes into an IAM boundary.
 - Never persist Cargo registry credentials, cloud credentials, or tokens on a sticky or snapshotted path. Scrub credential-bearing files before a save-capable post step.
 
 ## Ownership And Maintenance

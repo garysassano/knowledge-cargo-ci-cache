@@ -49,6 +49,13 @@ When a decision in [`docs/decisions/README.md`](README.md) changes, append an en
 - Current interpretation: D4 refers to the measured custom snapshot implementation; D8 separately tracks managed EBS sticky disks. The [v2.3.1 source contract](../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary) distinguishes explicit unavailable-marker cold fallback from missing configuration, invalid mounts, and deadline errors, despite broader failure wording in the capability docs. D11 keeps Cargo's content-fingerprint work on the nightly watchlist after the September 3 call for testing, with build-script mtimes still a limitation.
 - Basis: [RunsOn sticky disks](https://runs-on.com/docs/runners/capabilities/sticky-disks/), the pinned action sources linked in the contract, and [Cargo's tracking issue](https://github.com/rust-lang/cargo/issues/14136). This is documentation/source clarification; no new cache engine, provider deployment, or nightly benchmark was run.
 
+### RunsOn deployment qualification — Live documentation and open proposals
+
+- Reviewed: 2026-09-06.
+- Prior coverage: Some platform sections still carried an August 20 review date, omitted initialization/isolation details and several storage/blog sources, and linked only the closed sccache-prefix proposal.
+- Current qualification: Checked stack v3.2.3 and action v2.3.1, retained the explicit prefix override while PR #58 is open, separated NVMe/tmpfs/EFS and Flex/Fleet availability, and documented initialization cost plus the legacy snapshot permission-removal boundary. Recorded conflicting website, blog, and released-action claims explicitly.
+- Basis: [Provider sources and articles](../providers/runs-on.md), [version boundary](../deployments/runs-on/README.md#version-boundary), and [website/release differences](../reference/runson-cache-and-disk-details.md#website-and-release-differences). D1–D11 and all archived measurements retain their existing qualification; no AWS workload was run during this refresh.
+
 <!--
 Template for future entries:
 

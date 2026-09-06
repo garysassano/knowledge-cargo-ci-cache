@@ -38,6 +38,8 @@ Use this checklist when refreshing the archive or copying its examples into a li
 - Keep RunsOn Magic Cache, direct S3 `sccache`, sticky-disk, support-transition, and current-version checks in [`docs/deployments/runs-on/README.md`](../deployments/runs-on/README.md).
 - Verify the RunsOn stack is v3.2.0 or newer before testing sticky disks.
 - Set `sticky_wait_timeout` explicitly while documentation and released action metadata disagree on the default. Recheck the [versioned failure states](../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary): explicit unavailability, missing configuration, invalid mounts, and timeout need separate assertions.
+- Check the [RunsOn provider source map](../providers/runs-on.md), including the dedicated sccache README, Rust guide, storage capabilities, provider blog posts, and [website/release differences](../reference/runson-cache-and-disk-details.md#website-and-release-differences). Distinguish default-branch code, open PRs, the released action tag, and the deployed stack; verify release metadata through the live API when search caches lag.
+- Re-check snapshot initialization settings/costs, Flex/Fleet and OS availability, and both independent isolation flags before copying provider examples.
 - Re-check sticky lineage, default-branch fallback, concurrency, inactive expiry, free-space/inode warnings, automatic reset, and failure/cancellation behavior.
 - Treat Magic Cache protocol isolation and direct S3 IAM as separate boundaries. `SCCACHE_S3_RW_MODE=READ_ONLY` is not a substitute for an IAM-enforced read-only runner role.
 - Confirm lifecycle and inventory against the actual RunsOn S3 backend; do not assume GitHub cache API commands expose every third-party backend object.

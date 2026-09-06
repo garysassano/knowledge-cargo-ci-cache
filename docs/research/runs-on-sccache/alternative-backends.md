@@ -1,8 +1,8 @@
 # Alternative sccache backend experiments
 
-Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](baseline.md#release-refresh-2026-09-06).
+Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](../../reference/compiler-cache-implementation.md#release-refresh-2026-09-06).
 
-## Improvement 6: Native GitHub Actions Cache Through Magic Cache
+## Native GitHub Actions Cache Through Magic Cache
 
 ### Why It Is Interesting
 
@@ -14,7 +14,7 @@ RunsOn Magic Cache repository and branch protocol isolation is optional and disa
 
 ### Blocking Defect
 
-The OpenDAL 0.55.0 writer embedded in sccache 0.17.0 discards upload finalization errors. OpenDAL 0.59.0 fixes this; qualify an updated or patched sccache build before evaluating performance. See the [release refresh](baseline.md#release-refresh-2026-09-06). A successful upload-body transfer is not a successful cache write until finalization succeeds and a fresh client can read the key.
+The OpenDAL 0.55.0 writer embedded in sccache 0.17.0 discards upload finalization errors. OpenDAL 0.59.0 fixes this; qualify an updated or patched sccache build before evaluating performance. See the [release refresh](../../reference/compiler-cache-implementation.md#release-refresh-2026-09-06). A successful upload-body transfer is not a successful cache write until finalization succeeds and a fresh client can read the key.
 
 ### Required Conformance Matrix
 
@@ -49,7 +49,7 @@ Native GHA remains experimental until:
 - Request and storage cost are attributable.
 - Failure behavior remains within the direct-compiler gates.
 
-## Improvement 7: S3 Express One Zone
+## S3 Express One Zone
 
 ### Status
 
@@ -94,7 +94,7 @@ After backend support exists, run a read-only S3 Express experiment first. A wri
 
 Do not promote it from microbenchmark latency alone, and do not promote a canonical writer while conditional creation or publication fencing remains unresolved.
 
-## Improvement 8: Redis, Valkey, And Memcached
+## Redis, Valkey, And Memcached
 
 ### Backend Roles
 

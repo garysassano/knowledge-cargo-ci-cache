@@ -2,21 +2,22 @@
 
 ## Summary
 
-| Field | Value |
-| --- | --- |
-| Status | Leading PR-CI candidate; adoption requires a representative canary |
-| Use when | Jobs start with a clean target, source changes frequently, and eligible compiler outputs are reusable across commits. |
+| Field         | Value                                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Status        | Leading PR-CI candidate; adoption requires a representative canary                                                               |
+| Use when      | Jobs start with a clean target, source changes frequently, and eligible compiler outputs are reusable across commits.            |
 | Main tradeoff | Cargo orchestration, per-object remote operations, non-cacheable calls, build scripts, and final linking still run on every job. |
 
 ## Related Files
 
-| File | Purpose |
-| --- | --- |
-| [RunsOn `sccache` canary workflow](../../examples/workflows/runs-on-sccache-canary.yml) | Generic trusted-writer canary without a separate Cargo-input archive and with compiler-cache statistics. |
-| [Mr. Boxington comparison](mr-boxington.md) | Experimental alternative with separate local and fresh-runner evidence. |
-| [RunsOn research](../research/runs-on-sccache/README.md) | Proposed lifecycle, transport, persistence, and performance work; not current features. |
-| [RunsOn deployment](../deployments/runs-on/README.md) | Direct S3 configuration, namespace, IAM, and runner-specific notes. |
-| [Rust CI cache ecosystem sources](../reference/vendor-ci-cache-sources.md) | External direct-object, near-cache-service, colocated archive-cache, persistent-runner, and compiler-wrapper designs. |
+| File                                                                                    | Purpose                                                                                                               |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [RunsOn `sccache` canary workflow](../../examples/workflows/runs-on-sccache-canary.yml) | Generic trusted-writer canary without a separate Cargo-input archive and with compiler-cache statistics.              |
+| [Mr. Boxington comparison](mr-boxington.md)                                             | Experimental alternative with separate local and fresh-runner evidence.                                               |
+| [Implementation reference](../reference/compiler-cache-implementation.md)               | Pinned compiler-cache behavior, embedded dependencies, durability boundaries, and dated release status.               |
+| [RunsOn research](../research/runs-on-sccache/README.md)                                | Proposed lifecycle, transport, persistence, and performance work; not current features.                               |
+| [RunsOn deployment](../deployments/runs-on/README.md)                                   | Direct S3 configuration, namespace, IAM, and runner-specific notes.                                                   |
+| [Rust CI cache ecosystem sources](../reference/vendor-ci-cache-sources.md)              | External direct-object, near-cache-service, colocated archive-cache, persistent-runner, and compiler-wrapper designs. |
 
 ## Design
 

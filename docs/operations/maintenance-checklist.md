@@ -48,9 +48,9 @@ Use this checklist when refreshing the archive or copying its examples into a li
 - Keep compiler-wrapper candidates, provider documentation, and blog posts in the ecosystem catalog. Preserve source URLs when reorganizing it and label untested products explicitly.
 - Record mbx binary, action version, and GitHub payload mode separately. The current action's `target` default is a different mechanism from `objects`; recheck these inputs before reproducing old compiler-object trials.
 - Keep same-job reuse separate from fresh-runner restore/export, and do not infer compiler reuse from an exact archive hit.
-- Recheck the version of OpenDAL embedded in the tested sccache binary before carrying a fixed upstream limitation forward. Record changed release status in the research baseline and decision history.
+- Recheck the version of OpenDAL embedded in the tested sccache binary before carrying a fixed upstream limitation forward. Record changed release status in the [implementation reference](../reference/compiler-cache-implementation.md) and decision history.
 - Keep proposed inputs, drain APIs, gateways, readiness/index formats, and storage tiers under research until implemented and qualified. Numeric promotion budgets are proposals, not benchmark results.
-- Validate relative Markdown links and heading anchors, JSONL identity/accounting, retained evidence, and example YAML after moving or splitting pages.
+- Run `python scripts/check_docs.py` after moving or splitting pages to check local Markdown paths/anchors and JSONL identity/accounting. Preserve evidence records and provider URLs; review claim status and example YAML separately. The checker validates structure, not source truth or sanitization.
 
 ## Archived AWS Experiments
 

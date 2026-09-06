@@ -7,7 +7,7 @@ This page owns the detailed field, phase, and metric vocabulary for [the JSONL c
 | Field                | Type    | Required    | Meaning                                                                                                                                                                                |
 | -------------------- | ------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `schema_version`     | string  | Yes         | `cargo-ci-cache/v1`                                                                                                                                                                    |
-| `record_type`        | string  | Yes         | One of the record types above                                                                                                                                                          |
+| `record_type`        | string  | Yes         | One of the [contract record types](cache-measurement-schema.md#record-types)                                                                                                           |
 | `run_id`             | string  | Yes         | Opaque unique trial identifier                                                                                                                                                         |
 | `strategy`           | string  | Yes         | Stable generic name such as `no-cache`, `input-only-archive`, `whole-target-archive`, `s3-sccache`, `sticky-inputs`, or `sticky-target`                                                |
 | `scenario_id`        | string  | Yes         | Opaque pairing identifier shared by directly comparable trials                                                                                                                         |
@@ -47,7 +47,7 @@ Suggested `workload` fields are `class`, `toolchain`, `compiler_identity`, `link
 | `attribution`     | string  | Recommended | `measured`, `log-derived`, `tool-reported`, or `inferred`                               |
 | `scope`           | string  | Recommended | Generic owner such as `cargo-inputs`, `target-archive`, `compiler-cache`, or `workload` |
 
-Use `exclusive` only when the interval is known not to overlap sibling critical-path phases. Use `inclusive` for a total containing child phases. Use `may-overlap` for compiler requests, parallel rustc processes, background uploads, and resource-related activity. Use `aggregate-only` when a duration is known but start/end offsets are unavailable.
+Apply the [phase accounting](cache-measurement-schema.md#phase-accounting) and [wall-time rules](cache-measurement-schema.md#overlap-and-wall-time-rules) from the contract.
 
 Canonical phase names are:
 

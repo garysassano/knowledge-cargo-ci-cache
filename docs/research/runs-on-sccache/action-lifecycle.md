@@ -1,12 +1,10 @@
 # Proposed sccache action lifecycle
 
-Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](baseline.md#release-refresh-2026-09-06).
+Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](../../reference/compiler-cache-implementation.md#release-refresh-2026-09-06).
 
-## Improvement 1: Transactional Action Integration
+## Ownership
 
-### Ownership
-
-RunsOn should offer one lifecycle owner for the supported integration. The owner may call an external installer internally, but users should not need two unrelated actions whose environment and post steps can race.
+This page owns setup, configuration identity, quiescence, drain, and per-invocation fallback for both direct and gateway modes. [Trust and publication](trust-and-publication.md) owns authority; [validation](validation.md) owns tests. RunsOn should offer one lifecycle owner for the supported integration. The owner may call an external installer internally, but users should not need two unrelated actions whose environment and post steps can race.
 
 The supported interface should make these choices explicit:
 
@@ -26,14 +24,14 @@ The supported interface should make these choices explicit:
 
 Workflow-controlled values may request a mode, but the action must derive actual authority from verified runner and job identity. An untrusted event cannot turn a read-only credential into a writer by setting an input.
 
-### Setup Transaction
+## Setup Transaction
 
 The setup sequence should be:
 
 1. Resolve RunsOn platform identity, numeric GitHub owner and repository IDs, event trust class, OS, architecture, runner identity, and requested cache mode.
 2. Reject missing, conflicting, or unsafe identity before creating a shared namespace.
 3. Resolve the allowed access mode from remote policy.
-4. Select a released, exact `sccache` binary and verify its checksum, or verify that an externally supplied executable matches the required version.
+4. Verify the selected or externally supplied binary against the [binary supply-chain policy](trust-and-publication.md#binary-supply-chain).
 5. Build a canonical configuration object and a non-secret fingerprint of every setting that changes storage behavior.
 6. Reject or clear inherited `SCCACHE_CLIENT_SIDE=1` for the supported default-server baseline before fingerprinting; keep client-side modes as isolated experiments because the measured client-side trials did not improve warm performance.
 7. Detect a running daemon, query its binary and configuration fingerprint when supported, and stop or reject it if the fingerprint differs.
@@ -49,7 +47,7 @@ The setup sequence should be:
 
 The backend probe should use a dedicated health key or control API, not an unbounded namespace listing. Read-only jobs should verify a known metadata object or perform a bounded known-key read. Writer probes should write a unique short-lived health object only under a dedicated probe prefix with lifecycle cleanup, or use a broker/gateway health API that does not modify the compiler namespace.
 
-### Post Transaction
+## Post Transaction
 
 The post sequence should run even when the workload fails:
 
@@ -70,7 +68,7 @@ Until upstream supports an explicit drain, the action must not describe `sccache
 
 Plain WebDAV does not identify compiler-invocation boundaries. Exact quiescence therefore requires either a stable wrapper shim or an upstream control protocol that registers each producer before it can emit object requests.
 
-### Fallback Semantics
+## Fallback Semantics
 
 Fallback is safe only before compilation or at a clearly defined cache lookup boundary.
 
@@ -81,7 +79,7 @@ Fallback is safe only before compilation or at a clearly defined cache lookup bo
 - If a job explicitly requests nonzero Rust incremental compilation, strict mode fails and fallback mode disables `sccache`; the action does not silently override an incompatible user request.
 - A strict mode may fail setup for a trusted population workflow whose purpose is to produce cache state, but ordinary CI should prefer direct-compiler continuity.
 
-### Stale Daemon Prevention
+## Stale Daemon Prevention
 
 `sccache` storage is created at daemon startup, so environment changes after startup are insufficient. The integration needs one of:
 
@@ -91,7 +89,7 @@ Fallback is safe only before compilation or at a clearly defined cache lookup bo
 
 The runtime directory must not be placed in sticky `SCCACHE_DIR`; persisting sockets, PIDs, tokens, or presigned URLs creates stale-state and credential risks.
 
-### Proposed Action Output
+## Proposed Action Output
 
 A concise summary should include:
 

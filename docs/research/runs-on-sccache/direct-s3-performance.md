@@ -1,12 +1,10 @@
 # Direct S3 performance experiments
 
-Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](baseline.md#release-refresh-2026-09-06).
-
-## Improvement 3: Direct-S3 Performance Work Before A Gateway
+Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](../../reference/compiler-cache-implementation.md#release-refresh-2026-09-06).
 
 Direct S3 remains the reference path and should receive targeted improvements that are useful even if a gateway is later adopted.
 
-### Stage-Level Instrumentation
+## Stage-Level Instrumentation
 
 Measure, at minimum:
 
@@ -25,7 +23,7 @@ Measure, at minimum:
 
 Without this split, a faster or slower result cannot identify whether the limiting stage is hashing, local daemon serialization, S3, KMS, memory, compression, compiler scheduling, or output materialization.
 
-### Connection And Request Behavior
+## Connection And Request Behavior
 
 Candidate changes to benchmark behind feature flags:
 
@@ -42,7 +40,7 @@ Candidate changes to benchmark behind feature flags:
 
 Retries must not turn authorization, invalid request, or corruption errors into long delays. Typed errors are a prerequisite.
 
-### Compression
+## Compression
 
 `sccache` v0.17.0 defaults to zstd level 3. Benchmark levels 1, 3, 6, and 9 with source, runner, cache state, and backend fixed.
 
@@ -58,7 +56,7 @@ Record:
 
 Lower compression may reduce population CPU while increasing transfer and storage. Higher compression may reduce remote bytes while increasing miss-path CPU. The best setting can differ between cold writers and read-heavy jobs, so format compatibility and namespace versioning must be explicit.
 
-### Memory And Streaming
+## Memory And Streaming
 
 The released remote path reads complete objects into memory. Large artifacts multiplied by concurrent rustc requests can create avoidable RSS peaks and allocator pressure.
 
@@ -71,7 +69,7 @@ Proposed upstream or gateway behavior:
 - Reject or quarantine malformed length metadata before allocation.
 - Record peak in-flight bytes and spill volume.
 
-### Population Policy
+## Population Policy
 
 Use one trusted canonical population job rather than allowing every reader to write.
 

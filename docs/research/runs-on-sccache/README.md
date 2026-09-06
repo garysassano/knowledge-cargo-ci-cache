@@ -1,38 +1,26 @@
 # RunsOn sccache research
 
-Status: Proposed designs and experiments. The [current RunsOn deployment](../../deployments/runs-on/README.md), [sccache approach](../../approaches/sccache.md), and [decisions](../../decisions/README.md) remain the implementation and adoption entry points. Source refresh: 2026-09-06; archived measurements retain their original versions and dates.
+Status: Proposed designs and experiments. Use the [current deployment](../../deployments/runs-on/README.md), [sccache approach](../../approaches/sccache.md), and [decisions](../../decisions/README.md) for implementation and adoption. Verified behavior and the dated release refresh live in the [implementation reference](../../reference/compiler-cache-implementation.md); the [planning model](../../evidence/cache-strategy-benchmarks.md#planning-model) is an inference from archived measurements.
 
-This collection explores how to reduce cold-cache overhead, retain useful compiler objects across jobs, make storage failures visible, and improve shared-cache ownership. Load the page for the question at hand; reading the entire design is unnecessary for copying the existing workflow.
+This collection explores lower cold-cache overhead, cross-job compiler-object reuse, visible storage failures, and shared-cache ownership. Retrieve the page for the question at hand; copying the existing workflow does not require loading this design.
 
-| Question                                                                   | Page                                              | Claim status                                                                                     |
-| -------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| What did the tested binaries do, and what changed upstream?                | [Implementation baseline](baseline.md)            | Pinned source observations, dated release refresh, and explicitly limited timing model           |
-| What should be tried first?                                                | [Performance roadmap](roadmap.md)                 | Proposed priorities and completion tests                                                         |
-| Who owns installation, daemon configuration, fallback, and shutdown?       | [Action lifecycle](action-lifecycle.md)           | Proposed action contract                                                                         |
-| How should credentials, immutable writes, readiness, and generations work? | [Trust and publication](trust-and-publication.md) | Proposed shared-cache contract                                                                   |
-| Which direct-S3 costs should be isolated?                                  | [Direct S3 performance](direct-s3-performance.md) | Proposed instrumentation and tuning experiments                                                  |
-| What would a WebDAV gateway add?                                           | [Gateway](gateway.md)                             | Untested protocol, request, write, and drain design                                              |
-| How could local compiler objects survive a runner?                         | [Sticky local tier](sticky-local-tier.md)         | Untested persistence and publication design                                                      |
-| What blocks GHA, S3 Express, Redis, Valkey, or Memcached trials?           | [Alternative backends](alternative-backends.md)   | Integration qualification; distinguish current upstream fixes from the tested sccache dependency |
-| What evidence is needed before promotion?                                  | [Validation](validation.md)                       | Measurement, failure, cost, and provisional acceptance contract                                  |
-| Which repository would implement each change?                              | [Implementation map](implementation.md)           | Proposed ownership, dependencies, and unresolved choices                                         |
+| Question                                                             | Canonical owner                                                                                                                                        |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| What should be attempted, in what order, and by whom?                | [Roadmap](roadmap.md): the only task inventory, implementation ownership, dependencies, and open choices.                                              |
+| Who installs, configures, starts, drains, and stops the integration? | [Action lifecycle](action-lifecycle.md): setup/post ordering and safe per-invocation fallback.                                                         |
+| Who may read, write, and publish shared state?                       | [Trust and publication](trust-and-publication.md): admission, namespace, immutable objects, integrity, readiness, and fencing.                         |
+| Which direct-S3 costs should be isolated?                            | [Direct S3 performance](direct-s3-performance.md): instrumentation, transport, compression, memory, and population experiments.                        |
+| What would a gateway add?                                            | [Gateway](gateway.md): protocol, coalescing, negative lookup, index representation, write queue, replay, and control API.                              |
+| How could local objects survive a runner?                            | [Sticky local tier](sticky-local-tier.md): local ownership, snapshot ordering, lineage, and capacity. Includes the separate unmeasured Cargo workflow. |
+| What qualifies another backend?                                      | [Alternative backends](alternative-backends.md): GHA, S3 Express, Redis, Valkey, and Memcached conformance.                                            |
+| What must an experiment record and prove?                            | [Validation](validation.md): attribution controls, failure injections, contract tests, and promotion gates.                                            |
 
-## Sequencing
+## Reading and editing rules
 
-Start with repeatable direct-compiler and default-server S3 controls, then measure retention, population policy, setup cost, compression, and concurrency. Complete action lifecycle and write-accounting work before relying on readiness publication or sticky compiler-cache state. A sticky local tier may be tested before a gateway when sccache itself can provide exclusive ownership and reliable drain; a gateway-managed tier depends on those gateway contracts. Follow the [roadmap](roadmap.md) for the complete task inventory.
+The roadmap links to requirements instead of copying them. Each design owns the contract named above and links to other owners for shared rules. Validation expresses tests against those contracts. Generic sampling, accounting, and cost reporting belong in [Measuring cache performance](../../operations/measuring-cache-performance.md).
 
-Prototype a gateway as a read-only WebDAV pass-through before adding negative lookup metadata, request coalescing, local objects, remote writes, packs, or prefetch. WebDAV is a storage protocol; it can still be used with normal sccache server mode. Each optimization needs its own comparison with direct S3.
+Keep proposal status visible on every page because a retrieved page may be read independently. A referenced source observation or measured result retains its own version, date, workload, and limitations; it does not validate the surrounding proposal. Proposed API names and JSON shapes are design sketches.
 
-## Invariants
+## Promotion and rollback
 
-- Setup exports the wrapper only after the intended binary, daemon configuration, and backend are ready; fallback never starts a second compiler for an ambiguous invocation.
-- Workflow inputs, branch names, local sockets, and cache prefixes do not grant remote authority. A loopback service is not a security boundary against root-capable job code.
-- Acknowledged canonical writes must be remotely committed. A post hook, local spool, or `--stop-server` call alone does not prove that background work finished.
-- Publication uses a trusted writer and an external lease with a fencing token; local markers and locks establish consistency within a volume, not authority across restored clones.
-- Byte checksums do not prove that a compiler result is authentic. Lower-trust objects never become canonical through backfill or replay.
-- Missing, failed, cancelled, or incomplete populations cannot publish readiness. Negative indexes may suppress origin reads only when they completely describe a sealed generation.
-- Every tier has explicit resource limits, telemetry, cost ownership, and independent rollback.
-
-## Rollback and promotion
-
-Keep a known-good direct-rustc workflow, previous action and stack revisions, and independent switches for the gateway, index, sticky tier, and backend. Abandon a namespace to roll back without waiting for deletion. Numeric performance thresholds in [Validation](validation.md) are proposed acceptance budgets, not measured guarantees. Change a current decision or copyable deployment only after implementation and evidence pass the [maintenance procedure](../../operations/maintenance-checklist.md).
+Retain a direct-rustc control, previous action/stack revisions, independent switches for each experiment, and a namespace rollback that does not depend on immediate deletion. Promote only after implementation and [validation](validation.md#promotion-gates), then update the canonical evidence and decision through the [maintenance checklist](../../operations/maintenance-checklist.md).

@@ -16,26 +16,26 @@ Use the [cache measurement JSONL schema](../reference/cache-measurement-schema.m
 
 ## Canonical Phase Map
 
-| Phase | Includes | Primary pressure | Important companion values |
-| --- | --- | --- | --- |
-| Queue | Workflow eligibility until runner assignment | Capacity | Queue duration |
-| Runner setup | Instance start, runner registration, checkout prerequisites | Platform | Image and runner profile |
-| Tool setup | Rust, task runner, linker, and helper installation | Network, CPU, disk | Downloaded bytes and tool-cache hit state |
-| Cache lookup | Key resolution and cache metadata requests | API latency | Request count and exact/fallback/miss state |
-| Cache download | Archive object transfer before local extraction | Network | Compressed bytes and effective throughput |
-| Archive extraction | Decompression, tar parsing, file creation, and metadata writes | CPU and local disk | Compressed bytes, restored bytes, file count, CPU time, disk writes |
-| Cache scan | Directory traversal and metadata inspection before cleanup or save | Local disk and inode metadata | Files visited and scan duration |
-| Cache cleanup | Removal or pruning performed by the cache owner | CPU and local disk | Bytes/files before and after cleanup |
-| Workload | Complete representative build/test command | Mixed | Wall time and process resource summary |
-| Cargo orchestration | Dependency graph traversal, build scripts, scheduling, and work not assigned to compilation/link/test | CPU and process overhead | Cargo timing artifact and unit count |
-| Compiler-cache lookup/materialization | Per-invocation lookup, download, decompression, and output materialization | API latency, network, CPU, disk | Requests, hit/miss/error counts and object bytes |
-| Compilation | Actual rustc work on cache misses or without a compiler cache | CPU, memory, local disk | rustc wall/CPU time, units, peak concurrency |
-| Linking | Final link steps | CPU, memory, local disk | Linker wall/CPU time and output bytes |
-| Test execution | Test process execution after build completion | CPU and workload-specific resources | Test count and wall time |
-| Archive compression | Archive creation and compression after cleanup | CPU and local disk reads | Input bytes/files, output bytes, compression ratio |
-| Cache upload | Transfer of the completed archive or cache object | Network | Uploaded bytes and effective throughput |
-| Cache post other | Save checks, key races, metadata calls, and action overhead not captured above | Mixed | Save outcome and duplicate-writer state |
-| Job total | Runner-assigned start through completion of post steps | Critical path | Exit status and billed duration |
+| Phase                                 | Includes                                                                                              | Primary pressure                    | Important companion values                                          |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------- |
+| Queue                                 | Workflow eligibility until runner assignment                                                          | Capacity                            | Queue duration                                                      |
+| Runner setup                          | Instance start, runner registration, checkout prerequisites                                           | Platform                            | Image and runner profile                                            |
+| Tool setup                            | Rust, task runner, linker, and helper installation                                                    | Network, CPU, disk                  | Downloaded bytes and tool-cache hit state                           |
+| Cache lookup                          | Key resolution and cache metadata requests                                                            | API latency                         | Request count and exact/fallback/miss state                         |
+| Cache download                        | Archive object transfer before local extraction                                                       | Network                             | Compressed bytes and effective throughput                           |
+| Archive extraction                    | Decompression, tar parsing, file creation, and metadata writes                                        | CPU and local disk                  | Compressed bytes, restored bytes, file count, CPU time, disk writes |
+| Cache scan                            | Directory traversal and metadata inspection before cleanup or save                                    | Local disk and inode metadata       | Files visited and scan duration                                     |
+| Cache cleanup                         | Removal or pruning performed by the cache owner                                                       | CPU and local disk                  | Bytes/files before and after cleanup                                |
+| Workload                              | Complete representative build/test command                                                            | Mixed                               | Wall time and process resource summary                              |
+| Cargo orchestration                   | Dependency graph traversal, build scripts, scheduling, and work not assigned to compilation/link/test | CPU and process overhead            | Cargo timing artifact and unit count                                |
+| Compiler-cache lookup/materialization | Per-invocation lookup, download, decompression, and output materialization                            | API latency, network, CPU, disk     | Requests, hit/miss/error counts and object bytes                    |
+| Compilation                           | Actual rustc work on cache misses or without a compiler cache                                         | CPU, memory, local disk             | rustc wall/CPU time, units, peak concurrency                        |
+| Linking                               | Final link steps                                                                                      | CPU, memory, local disk             | Linker wall/CPU time and output bytes                               |
+| Test execution                        | Test process execution after build completion                                                         | CPU and workload-specific resources | Test count and wall time                                            |
+| Archive compression                   | Archive creation and compression after cleanup                                                        | CPU and local disk reads            | Input bytes/files, output bytes, compression ratio                  |
+| Cache upload                          | Transfer of the completed archive or cache object                                                     | Network                             | Uploaded bytes and effective throughput                             |
+| Cache post other                      | Save checks, key races, metadata calls, and action overhead not captured above                        | Mixed                               | Save outcome and duplicate-writer state                             |
+| Job total                             | Runner-assigned start through completion of post steps                                                | Critical path                       | Exit status and billed duration                                     |
 
 When logs expose only a combined value such as lookup with download or archive creation with compression, store that combined phase name and document the limitation. Never split a combined duration using an assumed percentage.
 
@@ -57,18 +57,18 @@ Record the public or sanitized runner profile separately from the strategy:
 
 Predeclare the scenarios that apply to the cache mechanism. Keep each scenario in its own comparison block rather than pooling incompatible cache states or invalidation events.
 
-| Scenario | What it tests |
-| --- | --- |
-| Cold namespace | Population cost, clean-build behavior, and initial persistent growth |
-| Warm exact repeat | Best-case reuse and exact-key behavior |
-| Source-only change | Cross-commit reuse without dependency changes |
-| Lockfile or manifest change | Dependency invalidation, fallback behavior, and object growth |
-| Feature change | Feature-key separation and non-cacheable work |
-| Profile, target, or compiler-flags change | Build-configuration separation |
-| Toolchain change | Compiler invalidation and namespace separation |
-| Concurrent readers and writers | Request pressure, duplicate saves, and last-writer behavior |
-| Unauthorized writer attempt | Workflow and infrastructure trust enforcement |
-| Cache or backend unavailable | Fail-open behavior, timeout cost, and clean fallback |
+| Scenario                                  | What it tests                                                        |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| Cold namespace                            | Population cost, clean-build behavior, and initial persistent growth |
+| Warm exact repeat                         | Best-case reuse and exact-key behavior                               |
+| Source-only change                        | Cross-commit reuse without dependency changes                        |
+| Lockfile or manifest change               | Dependency invalidation, fallback behavior, and object growth        |
+| Feature change                            | Feature-key separation and non-cacheable work                        |
+| Profile, target, or compiler-flags change | Build-configuration separation                                       |
+| Toolchain change                          | Compiler invalidation and namespace separation                       |
+| Concurrent readers and writers            | Request pressure, duplicate saves, and last-writer behavior          |
+| Unauthorized writer attempt               | Workflow and infrastructure trust enforcement                        |
+| Cache or backend unavailable              | Fail-open behavior, timeout cost, and clean fallback                 |
 
 ### 2. Capture State Before Restore
 
@@ -92,14 +92,14 @@ Time the complete representative command with a monotonic clock and capture a pr
 
 Use one of these labels according to what was actually measured:
 
-| Available observation | Report as | Do not claim |
-| --- | --- | --- |
-| Only the task-runner or `cargo` command duration | Workload wall time | Pure compilation time |
-| Cargo timing units and critical path | Cargo unit/critical-path timing | Sum of units as wall time |
-| Per-rustc wrapper wall and CPU records | Compiler-request work, with overlap metadata | Sum of request durations as elapsed job time |
-| A no-cache rustc invocation | Compilation request | That the same duration applies to an `sccache` hit |
-| An `sccache` hit invocation | Compiler-cache lookup/materialization request | Compilation |
-| A cache miss through `sccache` | Compiler-cache miss request containing compile work | A clean split between lookup, compilation, and write unless traced |
+| Available observation                            | Report as                                           | Do not claim                                                       |
+| ------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------ |
+| Only the task-runner or `cargo` command duration | Workload wall time                                  | Pure compilation time                                              |
+| Cargo timing units and critical path             | Cargo unit/critical-path timing                     | Sum of units as wall time                                          |
+| Per-rustc wrapper wall and CPU records           | Compiler-request work, with overlap metadata        | Sum of request durations as elapsed job time                       |
+| A no-cache rustc invocation                      | Compilation request                                 | That the same duration applies to an `sccache` hit                 |
+| An `sccache` hit invocation                      | Compiler-cache lookup/materialization request       | Compilation                                                        |
+| A cache miss through `sccache`                   | Compiler-cache miss request containing compile work | A clean split between lookup, compilation, and write unless traced |
 
 If build and test execution can be separated without changing the representative workload, time compile-only and test-execution phases separately. Otherwise retain one workload duration and mark compile/link/test as unattributed.
 
@@ -127,22 +127,28 @@ Repeat byte/file/inode measurements and record save outcome, cache growth, compi
 
 ## Repetition And Stopping Rules
 
+Randomize strategy order where cache-state construction permits it. Use isolated namespaces or immutable generations for cold trials rather than deleting shared state. Hold source, compiler identity, workload settings, binaries, runner resources, compression, trust mode, and storage placement constant within each pair unless that variable is the experiment.
+
 Treat the first 10 paired observations per representative scenario as exploratory evidence for central tendency, not automatic proof of a winner. Do not describe p90 or p95 as stable from only 20–30 jobs; tail claims normally require substantially more comparable observations.
 
 Before collecting results, declare the minimum effect that matters, the intended precision or uncertainty interval, the maximum sampling budget, and the stopping rule. Report sample count, spread, uncertainty, exclusions, and any early stopping. Do not combine cold, warm, changed-source, invalidation, or different runner-profile observations merely to increase the sample count.
+
+Predeclare workload strata and weights, baseline window, absolute deadlines, relative budgets, desired precision, and sampling limits. Approximately 30 pairs can support an exploratory central-delta analysis; they do not establish precise tails. Around 100 jobs yield only about one expected observation beyond the p99 boundary, so tail claims need a sample-size plan tied to precision and rare-event frequency.
+
+Report paired medians, uncertainty intervals, maximum duration, and percentiles only when supported by the sample. Retain failed, cancelled, timed-out, and fallback observations; document exclusions rather than silently censoring them. Use the predeclared workload mix for an overall result and report individual strata alongside it.
 
 ## Attributing CPU, S3, And Storage
 
 Changing instance type often changes CPU, network, memory, and storage together. A faster run on another instance therefore proves that the complete runner profile is faster, not which resource caused the change.
 
-| Question | Controlled comparison | Evidence of sensitivity |
-| --- | --- | --- |
-| Does better CPU reduce clean compilation? | Same source, no cache, same storage class and workload concurrency; include a one-thread calibration | Lower compile/workload wall time with high CPU utilization and a consistent single-thread difference |
-| Does better CPU reduce archive serialization? | Extract and compress the same local archive on each runner | Lower extraction/compression time without proportional storage throughput change |
-| Does S3 bulk transfer dominate? | Download/upload the same object without extraction/compression | Transfer time scales with network throughput; local serialization does not |
-| Do S3 request latency and concurrency dominate `sccache`? | Same warm object set and workload, compare request latency/count while keeping CPU similar | High cache-hit request time with low bulk bytes and idle CPU gaps |
-| Does local NVMe help archive restore/save? | Extract, scan, clean, and compress the same local tree on otherwise comparable runners | Lower metadata/file-operation time and disk queueing |
-| Does local NVMe help compilation/linking? | Same cold no-cache workload on otherwise comparable runners | Lower target-write/link time with prior disk saturation |
+| Question                                                  | Controlled comparison                                                                                | Evidence of sensitivity                                                                              |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Does better CPU reduce clean compilation?                 | Same source, no cache, same storage class and workload concurrency; include a one-thread calibration | Lower compile/workload wall time with high CPU utilization and a consistent single-thread difference |
+| Does better CPU reduce archive serialization?             | Extract and compress the same local archive on each runner                                           | Lower extraction/compression time without proportional storage throughput change                     |
+| Does S3 bulk transfer dominate?                           | Download/upload the same object without extraction/compression                                       | Transfer time scales with network throughput; local serialization does not                           |
+| Do S3 request latency and concurrency dominate `sccache`? | Same warm object set and workload, compare request latency/count while keeping CPU similar           | High cache-hit request time with low bulk bytes and idle CPU gaps                                    |
+| Does local NVMe help archive restore/save?                | Extract, scan, clean, and compress the same local tree on otherwise comparable runners               | Lower metadata/file-operation time and disk queueing                                                 |
+| Does local NVMe help compilation/linking?                 | Same cold no-cache workload on otherwise comparable runners                                          | Lower target-write/link time with prior disk saturation                                              |
 
 Network configuration and instance selection can be optimized in the same final design, but attribution requires staged measurements:
 
@@ -157,23 +163,55 @@ For a separately authorized S3 compiler-cache diagnostic in an isolated test nam
 
 For compression attribution, compare supported settings on the same runner, source state, backend, namespace, and workload. Run each setting for both cold population and warm reuse, and capture workload/job wall time, compiler CPU, request duration, stored and transferred bytes, and request counts.
 
+## Cost accounting
+
+For a paired period:
+
+```text
+net cache cost =
+    cache storage
+  + cache requests
+  + cache service or gateway compute
+  + cache data transfer
+  + additional runner time in cold and failure states
+  - runner cost avoided in faster states
+
+cost per saved minute =
+    positive incremental cache cost / positive runner minutes saved
+```
+
+Report negative savings as a regression rather than forcing a cost-per-saved-minute value.
+
+The budget must include:
+
+- Warm-state frequency and reuse distance.
+- Population frequency.
+- Read-only guaranteed-empty bypass frequency.
+- Runner price by profile and purchase model.
+- S3 Standard or Express storage and requests.
+- KMS requests.
+- Redis, Valkey, gateway, index, and telemetry infrastructure.
+- Operator and incident burden when material.
+
+Every cost report declares currency, pricing date, runner purchase model, storage and service region, retention and amortization window, workload volume, and which operational costs are included.
+
 ## Derived Metrics
 
 Calculate derived values from the measured records:
 
-| Metric | Calculation |
-| --- | --- |
-| Download throughput | Compressed downloaded bytes / cache download seconds |
-| Extraction throughput | Restored uncompressed bytes / archive extraction seconds |
-| Compression throughput | Post-cleanup input bytes / archive compression seconds |
-| Upload throughput | Uploaded compressed bytes / cache upload seconds |
-| Compression ratio | Uncompressed input bytes / compressed archive bytes |
-| Cache handling share | Union of cache intervals on the critical path / job wall time |
-| Net cache benefit | Paired no-cache job wall time − cached job wall time |
-| Cache return on overhead | Workload time avoided / cache setup and post critical-path time |
-| Compiler-cache hit rate | Hits / executed cacheable requests |
-| Compiler-cache error rate | Errors / executed cacheable requests |
-| Phase coverage | Measured exclusive critical-path time / job wall time |
+| Metric                    | Calculation                                                     |
+| ------------------------- | --------------------------------------------------------------- |
+| Download throughput       | Compressed downloaded bytes / cache download seconds            |
+| Extraction throughput     | Restored uncompressed bytes / archive extraction seconds        |
+| Compression throughput    | Post-cleanup input bytes / archive compression seconds          |
+| Upload throughput         | Uploaded compressed bytes / cache upload seconds                |
+| Compression ratio         | Uncompressed input bytes / compressed archive bytes             |
+| Cache handling share      | Union of cache intervals on the critical path / job wall time   |
+| Net cache benefit         | Paired no-cache job wall time − cached job wall time            |
+| Cache return on overhead  | Workload time avoided / cache setup and post critical-path time |
+| Compiler-cache hit rate   | Hits / executed cacheable requests                              |
+| Compiler-cache error rate | Errors / executed cacheable requests                            |
+| Phase coverage            | Measured exclusive critical-path time / job wall time           |
 
 Use interval unions for cache handling share when phases overlap. Report summed compiler CPU or request work as CPU/work totals, not as elapsed time.
 
@@ -182,26 +220,26 @@ Use interval unions for cache handling share when phases overlap. Report summed 
 ### End-To-End Decision Table
 
 | Strategy | Cache state | Runner profile | Job | Workload | Restore critical path | Post critical path | Net vs paired baseline | Cost / successful job | Persistent bytes | Operational/trust risk | Decision |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| … | … | … | … | … | … | … | … | … | … | … | … |
+| -------- | ----------- | -------------- | --: | -------: | --------------------: | -----------------: | ---------------------: | --------------------: | ---------------: | ---------------------- | -------- |
+| …        | …           | …              |   … |        … |                     … |                  … |                      … |                     … |                … | …                      | …        |
 
 ### Archive Breakdown
 
 | Strategy | Object | Files | Lookup | Download | Extract | Scan | Cleanup | Compress | Upload |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| … | … | … | … | … | … | … | … | … | … |
+| -------- | -----: | ----: | -----: | -------: | ------: | ---: | ------: | -------: | -----: |
+| …        |      … |     … |      … |        … |       … |    … |       … |        … |      … |
 
 ### Compiler-Cache Breakdown
 
 | Strategy | Requests | Cacheable | Hits | Misses | Non-cacheable | Errors | Workload | Request wall sum | Request CPU sum |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| … | … | … | … | … | … | … | … | … | … |
+| -------- | -------: | --------: | ---: | -----: | ------------: | -----: | -------: | ---------------: | --------------: |
+| …        |        … |         … |    … |      … |             … |      … |        … |                … |               … |
 
 ### Runner Resource Comparison
 
 | Runner profile | No-cache compile/workload | Archive extract | Archive compress | S3 download | S3 upload | Warm compiler-cache workload |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| … | … | … | … | … | … | … |
+| -------------- | ------------------------: | --------------: | ---------------: | ----------: | --------: | ---------------------------: |
+| …              |                         … |               … |                … |           … |         … |                            … |
 
 Report median and tail values only at the precision supported by the repetition plan, plus sample count, spread, uncertainty, and limitations. Keep exact organization-specific comparisons in their private operational context; only sanitized evidence belongs in this archive.
 

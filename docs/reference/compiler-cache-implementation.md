@@ -1,6 +1,6 @@
-# RunsOn sccache implementation baseline
+# Compiler-cache implementation reference
 
-Status: Versioned implementation reference and archived measurements. The original design examined the August 2026 revisions below; the release refresh distinguishes newer upstream code from the binaries actually benchmarked. Last source check: 2026-09-06.
+Status: Pinned source observations with a release refresh on 2026-09-06. This page owns versioned sccache, OpenDAL, and RunsOn integration behavior. The refresh does not update the versions or outcomes of archived measurements. Use [the sccache approach](../approaches/sccache.md) for selection, [RunsOn deployment](../deployments/runs-on/README.md) for configuration, and [research](../research/runs-on-sccache/README.md) for proposed changes.
 
 ## Release refresh: 2026-09-06
 
@@ -13,41 +13,34 @@ Status: Versioned implementation reference and archived measurements. The origin
 | OpenDAL S3 Express    | [v0.59.0 release](https://github.com/apache/opendal/releases/tag/v0.59.0) includes session-authentication support through [PR #8135](https://github.com/apache/opendal/pull/8135); tracker #8053 is closed.   | Do not describe directory-bucket support as wholly absent upstream. The tested sccache dependency still needs replacement and integration qualification.                                            |
 | S3 conditional writes | The [current PutObject API](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html) documents `If-None-Match` without the earlier proposal's blanket directory-bucket exclusion.                  | Verify conditional creation in the selected client and directory-bucket operation. An external key coordinator is a fallback if that contract is unavailable, not an unconditional AWS requirement. |
 
-These checks are source review, not a fresh infrastructure deployment or benchmark. See [alternative backend qualification](alternative-backends.md) before changing transports.
+These checks are source review, not a fresh infrastructure deployment or benchmark. See [alternative backend qualification](../research/runs-on-sccache/alternative-backends.md) before changing transports.
 
 ## Source And Version Scope
 
 ### Pinned Implementations
 
-The verified implementation claims in this design use released or explicitly identified revisions rather than movable default branches.
+The implementation claims in this reference use released or explicitly identified revisions rather than movable default branches.
 
-| Component                                                                                                                                   | Revision reviewed                          | Role in this design                                                                 |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| [`runs-on/action` v2.3.0](https://github.com/runs-on/action/tree/46910bf61b41721b0579f237e186afb35477007a)                                  | `46910bf61b41721b0579f237e186afb35477007a` | Current action inputs, exported environment, setup/post lifecycle, and sticky modes |
-| [RunsOn v3.2.2](https://github.com/runs-on/runs-on/tree/9fa7739208d5d034e597c550f9bec5e2340225c1)                                           | `9fa7739208d5d034e597c550f9bec5e2340225c1` | Cache bucket, S3 endpoint, IAM, lifecycle, Magic Cache broker, and runner roles     |
-| [`sccache` v0.17.0](https://github.com/mozilla/sccache/tree/c037e117c7625a2668633574028a6addf2a96a6e)                                       | `c037e117c7625a2668633574028a6addf2a96a6e` | Backend behavior, multilevel semantics, timeouts, shutdown, and Rust compatibility  |
-| [`Mozilla-Actions/sccache-action` v0.0.11](https://github.com/Mozilla-Actions/sccache-action/tree/fc920bf0ec8de6ee65d409111f7ec508035751ba) | `fc920bf0ec8de6ee65d409111f7ec508035751ba` | Current external installer and post-run statistics reporter                         |
-| [OpenDAL 0.55.0 source used by `sccache` v0.17.0](https://github.com/apache/opendal/tree/48c48b1a1d3821af0864adc878e3864019ee9755)          | `48c48b1a1d3821af0864adc878e3864019ee9755` | Released GHA and remote-storage implementation under the tested `sccache`           |
-| [OpenDAL v0.58.2](https://github.com/apache/opendal/releases/tag/v0.58.2)                                                                   | `5add929a5a4995f0650300dfb818ab510f999d61` | Later released behavior checked for relevant fixes                                  |
+| Component                                                                                                                                   | Revision reviewed                          | Role in this reference                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| [`runs-on/action` v2.3.0](https://github.com/runs-on/action/tree/46910bf61b41721b0579f237e186afb35477007a)                                  | `46910bf61b41721b0579f237e186afb35477007a` | Action inputs at this revision, exported environment, setup/post lifecycle, and sticky modes |
+| [RunsOn v3.2.2](https://github.com/runs-on/runs-on/tree/9fa7739208d5d034e597c550f9bec5e2340225c1)                                           | `9fa7739208d5d034e597c550f9bec5e2340225c1` | Cache bucket, S3 endpoint, IAM, lifecycle, Magic Cache broker, and runner roles              |
+| [`sccache` v0.17.0](https://github.com/mozilla/sccache/tree/c037e117c7625a2668633574028a6addf2a96a6e)                                       | `c037e117c7625a2668633574028a6addf2a96a6e` | Backend behavior, multilevel semantics, timeouts, shutdown, and Rust compatibility           |
+| [`Mozilla-Actions/sccache-action` v0.0.11](https://github.com/Mozilla-Actions/sccache-action/tree/fc920bf0ec8de6ee65d409111f7ec508035751ba) | `fc920bf0ec8de6ee65d409111f7ec508035751ba` | External installer at this revision and post-run statistics reporter                         |
+| [OpenDAL 0.55.0 source used by `sccache` v0.17.0](https://github.com/apache/opendal/tree/48c48b1a1d3821af0864adc878e3864019ee9755)          | `48c48b1a1d3821af0864adc878e3864019ee9755` | Released GHA and remote-storage implementation under the tested `sccache`                    |
+| [OpenDAL v0.58.2](https://github.com/apache/opendal/releases/tag/v0.58.2)                                                                   | `5add929a5a4995f0650300dfb818ab510f999d61` | Later released behavior checked for relevant fixes                                           |
 
 [`runs-on/action` PR #57](https://github.com/runs-on/action/pull/57) is useful design input for repository-scoped prefixes, but it was closed without merging on 2026-08-22. It is not released action behavior.
 
 ### Evidence Classification
 
-Every important assertion belongs to one of these classes:
-
-| Class                   | Meaning                                                              | How this page uses it                                          |
-| ----------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Measured                | Recorded in this archive from sanitized trials                       | Supports quantitative constraints and experiment priorities    |
-| Verified implementation | Read from a pinned source revision or current official documentation | Describes what a released component actually does              |
-| Inference               | A consequence reasoned from measured or verified behavior            | Explicitly labelled and tested before promotion                |
-| Proposal                | A new design that is not implemented                                 | Described with implementation work, risks, and promotion gates |
+Apply the [claim classes and retrieval rules](../README.md#evidence-and-retrieval). This page records source observations; measurements and proposed changes have separate owners.
 
 Implementation claims below refer to the named releases. Performance explanations are hypotheses unless the experiment isolated that cause. Later release checks belong in the refresh table; they do not retroactively change the binaries used in archived measurements.
 
-Vendor case studies and product descriptions are comparison inputs, not evidence that the same result applies to RunsOn. The maintained source catalog is [Rust CI Cache Ecosystem Sources](../../reference/vendor-ci-cache-sources.md).
+Vendor case studies and product descriptions are comparison inputs, not evidence that the same result applies to RunsOn. The maintained source catalog is [Rust CI Cache Ecosystem Sources](vendor-ci-cache-sources.md).
 
-## Verified Current Architecture
+## Architecture at the pinned revisions
 
 ### Workflow Path
 
@@ -153,54 +146,6 @@ Released `sccache` v0.17.0 embeds OpenDAL 0.55.0. In that implementation, the Gi
 For the tested `sccache` binary, this makes native GHA through Magic Cache an unverified experiment, not a production alternative: an upload can complete its data transfer while finalization failure is not propagated to the caller. Compatibility must also be tested across the Twirp control protocol, signed upload URLs, token and scope behavior, duplicate keys, visibility from a fresh job, and RunsOn's proxy.
 
 See [OpenDAL 0.55.0 GHA writer finalization](https://github.com/apache/opendal/blob/48c48b1a1d3821af0864adc878e3864019ee9755/core/src/services/ghac/writer.rs#L189-L195) and [OpenDAL 0.58.2 GHA writer finalization](https://github.com/apache/opendal/blob/5add929a5a4995f0650300dfb818ab510f999d61/core/services/ghac/src/writer.rs#L271-L277).
-
-## Quantitative Constraints From Existing Evidence
-
-The full measurements and limitations stay in the canonical [evidence page](../../evidence/cache-strategy-benchmarks.md). The following point estimates are repeated only to derive design thresholds:
-
-| Same-profile state            | Job wall time |
-| ----------------------------- | ------------: |
-| Direct `rustc`, no Rust cache |        1,365s |
-| Direct-S3 population          |        1,643s |
-| Direct-S3 warm repeat         |          702s |
-| Empty read-only namespace     |        1,585s |
-
-The empty read-only trial shows that successful uploads were not the sole cold penalty. It does not isolate the remaining cost as S3 miss latency because wrapper and daemon work, hashing, remote lookup and handling, compiler interaction, rejected writes, and run variance remain combined.
-
-For a simplified workload in which a cache-enabled job is either a 1,643-second population state or a 702-second warm state, with warm probability `p`, the descriptive expected saving against the 1,365-second direct baseline is:
-
-```text
-S(p) = 1365 - ((1 - p) * 1643 + p * 702)
-     = 941p - 278 seconds per job
-```
-
-This model gives:
-
-| Goal                         | Required warm probability |
-| ---------------------------- | ------------------------: |
-| Break even                   |                    29.54% |
-| At least 5% expected saving  |                    36.80% |
-| At least 10% expected saving |                    44.05% |
-
-These are planning thresholds, not stable production estimates. Most full-workload cache states had one trial, source changes produce partial reuse rather than binary cold or warm states, and runner/profile variation remains.
-
-One multilevel population trial completed 5,197 of 5,447 expected remote writes before teardown. The next run reported exactly 250 misses. That matching count is strong evidence that untracked background completion matters operationally, even though it does not establish that every miss had no other possible cause.
-
-## Facts, Inferences, And Hypotheses
-
-| Statement                                                                                 | Classification                              | Design consequence                                                                              |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Warm default-server direct S3 materially improved the measured workload.                  | Measured                                    | Preserve it as the control that proposed designs must beat.                                     |
-| Cold population and empty read-only states were slower than direct `rustc`.               | Measured                                    | Add readiness bypass, failure fallback, and weighted mixed-state gates.                         |
-| The S3 gateway endpoint avoids a normal NAT route for matching traffic.                   | Verified implementation                     | Do not spend first effort on generic NAT replacement; still measure request latency and errors. |
-| S3 miss round trips caused most of the cold regression.                                   | Unproven hypothesis                         | Instrument lookup stages before optimizing solely for this explanation.                         |
-| Direct prefixes isolate repositories.                                                     | False under released IAM                    | Split credentials and policies; do not treat strings as authority.                              |
-| `stop-server` flushes all cache writes.                                                   | False for detached work                     | Add tracked queues and explicit drain.                                                          |
-| A loopback gateway can hide credentials from root-capable workflow code.                  | False as a security claim                   | Keep authorization and credential scope remotely enforceable.                                   |
-| A loopback gateway can coalesce requests, answer known misses locally, and manage writes. | Plausible proposal                          | Prototype with bounded resources and compare against direct S3.                                 |
-| Sticky local storage can make an L0 tier useful across jobs.                              | Plausible proposal                          | Test only with exclusive ownership, clean shutdown, and lineage controls.                       |
-| S3 Express should reduce small-object latency.                                            | Product capability hypothesis for this path | Block adoption on OpenDAL compatibility, same-AZ design, auth, lifecycle, and cost tests.       |
-| Native GHA should work because Magic Cache supports `actions/cache`.                      | Invalid equivalence                         | Run protocol-specific conformance and fix finalization handling first.                          |
 
 ## Verified References
 

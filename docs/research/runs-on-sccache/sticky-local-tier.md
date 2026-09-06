@@ -1,14 +1,12 @@
 # Proposed sticky local sccache tier
 
-Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](baseline.md#release-refresh-2026-09-06).
+Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](../../reference/compiler-cache-implementation.md#release-refresh-2026-09-06).
 
-## Improvement 5: First-Class Sticky Local `sccache` Tier
-
-### Cargo persistence experiment
+## Cargo persistence experiment
 
 The [proposed Cargo sticky-disk workflow](sticky-cargo-canary.yml) preserves the input-only and input-with-target experiment shapes. It is linted research material, not a measured canary or a sticky sccache implementation. It restricts publication candidates to the default branch, serializes each mode, keeps mutable target state outside the cached source worktree, and removes untracked worktree files. Sizes and runner labels are illustrative; verify actual stack version, lineage authority, capacity, and cost before running it. Workflow concurrency is not infrastructure-enforced publication fencing. Copy it into a workload repository only for an explicitly selected experiment, then record its first measurements before promoting it into the archive's main examples.
 
-### Current Boundary
+## Current Boundary
 
 The draft target variant also requires the [cached-worktree checkout action](../../../examples/actions/cached-worktree-checkout/action.yml) at the repository path it invokes. Copy and review that local action when adapting the workflow to another repository.
 
@@ -18,17 +16,17 @@ The existing evidence shows why persistence is necessary for a useful cross-job 
 
 Released sticky disks require RunsOn v3.2 or later. Set `sticky_wait_timeout: 15m` explicitly: an unavailable disk, missing readiness marker, or timeout can fail job setup before an `sccache` wrapper fallback has a chance to run. Inactive lineages expire after ten days, so a valid design must treat unexpected cold restoration as normal platform behavior rather than corruption.
 
-### Supported Shapes
+## Candidate shapes
 
-| Shape                                              | Cross-job reuse     | Remote sharing | Preferred status                      |
+| Shape                                              | Cross-job reuse     | Remote sharing | Qualification dependency              |
 | -------------------------------------------------- | ------------------- | -------------- | ------------------------------------- |
 | Sticky local-only `sccache`                        | Same lineage        | No             | Narrow experiment                     |
 | Sticky `disk,s3` managed directly by `sccache`     | Same lineage and S3 | Yes            | Requires upstream drain; experimental |
-| Sticky L0 managed by RunsOn gateway with S3 origin | Same lineage and S3 | Yes            | Preferred sticky design               |
+| Sticky L0 managed by RunsOn gateway with S3 origin | Same lineage and S3 | Yes            | Requires gateway ownership and drain  |
 
-The gateway-managed shape is preferred because one component owns the local directory, remote queue, integrity, and snapshot ordering.
+A gateway can give one component ownership of the local directory, remote queue, integrity, and snapshot ordering. Compare that benefit with the implementation cost; the [roadmap](roadmap.md#qualify-larger-experiments-only-when-needed) permits a directly managed sticky experiment first.
 
-### Ownership Marker
+## Ownership Marker
 
 The persistent data root should contain a small marker:
 
@@ -57,8 +55,8 @@ On startup:
 
 On post:
 
-1. Enter `QUIESCING`, prevent new compiler producers, and allow already-admitted producers to complete their one compiler attempt.
-2. Drain or explicitly abandon remote work according to policy and record terminal counts.
+1. Quiesce producers and account for remote writes through the [shared post transaction](action-lifecycle.md#post-transaction), before its optional snapshot publication step.
+2. Record its terminal counts before marking filesystem state clean.
 3. `fsync` data and metadata, run `syncfs`, atomically write or rename the clean marker, and `fsync` its parent directory.
 4. Stop the cache owner and verify no process or open handle holds the directory.
 5. Freeze or unmount the filesystem so the snapshot is crash-consistent.
@@ -70,7 +68,7 @@ Runtime sockets, PIDs, logs, credentials, and temporary presigned URLs belong ou
 
 The clean marker is local consistency metadata, not security proof: root-capable workflow code can forge it. A failed, cancelled, timed-out, lease-expired, fenced, or missing-post job never publishes a sticky snapshot or advances the lineage pointer.
 
-### Concurrency And Lineage
+## Concurrency And Lineage
 
 RunsOn sticky jobs restore independent volumes from a lineage snapshot; concurrent completions do not merge, and each clone can acquire its own local filesystem lock. Local locks establish one process owner inside one restored volume but cannot fence publication to the shared lineage.
 
@@ -83,7 +81,7 @@ Choose one:
 
 The platform stores lineage generation, predecessor, fencing epoch, trusted publisher identity, snapshot ID, status, and timestamps outside the mutable volume. A losing, expired, failed, cancelled, or timed-out publisher discards its snapshot. Do not let arbitrary concurrent jobs publish divergent LRU state into one logical lineage and assume the hot sets merge.
 
-### Capacity And GC
+## Capacity And GC
 
 Record:
 
@@ -98,10 +96,10 @@ Record:
 
 The cache maximum should leave explicit headroom for filesystem metadata, temporary objects, spill files, and snapshot operations. RunsOn's platform reset thresholds are emergency behavior, not a desired operating point.
 
-Released behavior warns below 20% free bytes or 10% free inodes and attempts an automatic reset below 5% free capacity; reset may be skipped when the lineage is already in use. Experiments must inject each threshold, record whether reset occurred, and prove that an unexpected reset produces a controlled cold path without publishing partial or cross-trust state.
+Inject the released [capacity warning and reset thresholds](../../reference/runson-cache-and-disk-details.md#sticky-disk-capacity-and-reset), including reset skipped while in use. Record whether reset occurred and verify a controlled cold path without partial or cross-trust publication.
 
 GC should be owned by the local cache process and run with a bounded time budget. A failed GC must be visible and must not race another server.
 
-### Unsupported Shared Filesystems
+## Unsupported Shared Filesystems
 
 Do not place one mutable local `SCCACHE_DIR` on EFS, FSx, NFS, or another concurrently mounted shared filesystem. The local LRU expects one server owner, and remote metadata latency plus multi-writer coordination changes both correctness and performance.

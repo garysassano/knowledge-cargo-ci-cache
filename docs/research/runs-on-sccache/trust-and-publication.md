@@ -1,10 +1,10 @@
 # Proposed compiler-cache trust and publication
 
-Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](baseline.md#release-refresh-2026-09-06).
+Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](../../reference/compiler-cache-implementation.md#release-refresh-2026-09-06).
 
-## Improvement 2: Direct-S3 Security, Namespace, And Readiness
+Shared-cache write authority is a software supply-chain capability. In addition to the admission, immutable-write, and integrity rules above, apply [bounded decoding and resource admission](gateway.md#write-queue-and-backpressure), [typed failure and safe fallback](action-lifecycle.md#fallback-semantics), and [trust-bound sticky ownership](sticky-local-tier.md#concurrency-and-lineage). Qualification includes adversarial denial, corruption, and redaction tests in [Validation](validation.md#contract-tests).
 
-### Target Trust Model
+## Target Trust Model
 
 | Job class                       | Canonical read                                                                                 | Canonical write | Private overlay | Default behavior                                            |
 | ------------------------------- | ---------------------------------------------------------------------------------------------- | --------------- | --------------- | ----------------------------------------------------------- |
@@ -18,7 +18,7 @@ The exact classification is a platform policy decision. The invariant is that wr
 
 Canonical compiler objects can contain paths, metadata, and repository-derived build outputs. Granting arbitrary pull-request code read access therefore creates a confidentiality and exfiltration channel even when mutation is denied. Any PR read opt-in must deny listing unless required, meter and rate-limit keyed reads, and remain isolated by repository and trust domain.
 
-### Writer Session Admission
+## Writer Session Admission
 
 `runs-on/action` should obtain a fresh GitHub Actions OIDC ID token with a compiler-cache-broker-specific audience. The broker must validate the issuer, audience, signature, `iat`, `nbf`, `exp`, unique `jti`, immutable `repository_owner_id` and `repository_id`, approved `workflow_sha` or `job_workflow_sha`, `event_name`, `run_id`, `run_attempt`, and `check_run_id` when issued. A broker nonce prevents replay of a token captured before the admission request.
 
@@ -28,7 +28,7 @@ The broker rejects reused token identifiers, stale run attempts, completed or ca
 
 Possession of a writer-capable loopback session is equivalent to canonical write authority because root-capable workflow code can submit arbitrary keys and bytes directly. Canonical writer sessions are therefore issued only to isolated protected population jobs. If untrusted compilation must coexist with cache ingestion, the ingest path needs a remote policy and stronger provenance design; a same-host token or socket is insufficient.
 
-### Namespace Layout
+## Namespace Layout
 
 The long-term brokered or gateway namespace should be structurally separate from the released shared direct-client namespace:
 
@@ -56,7 +56,7 @@ Rules:
 
 An interim direct-S3 design that cannot yet use brokered `scoped-cache/*` should stay under a new versioned `cache/sccache/v2/...` prefix and use separate runner roles or stacks. It must not imply that the prefix itself provides isolation.
 
-### IAM And Bucket Policy
+## IAM And Bucket Policy
 
 The target infrastructure should provide distinct capabilities:
 
@@ -86,7 +86,7 @@ For brokered access, use short-lived STS sessions with an inline session policy 
 
 See the official AWS [`AssumeRole` API](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html), [Amazon S3 policy keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/amazon-s3-policy-keys.html), and [conditional-write policy enforcement](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes-enforce.html). RunsOn's existing Magic Cache broker is a useful implementation precedent, but direct `sccache` should not reuse its current scope truncation or listing behavior without a compiler-cache-specific review.
 
-### Immutable Object Writes
+## Immutable Object Writes
 
 Compiler-cache keys are content-derived identifiers. A writer should normally create an absent object, not overwrite an existing key.
 
@@ -103,7 +103,7 @@ The preferred contract is first-writer-wins:
 
 AWS documents conditional writes in [How to prevent object overwrites with conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html). Released `sccache` and its OpenDAL path need verification or upstream work before this can be assumed.
 
-### Integrity
+## Integrity
 
 Each object should have:
 
@@ -120,7 +120,7 @@ The reader verifies stored-byte integrity before decoding and logical integrity 
 
 Checksums detect transport or storage corruption only. An authorized malicious writer can choose an arbitrary key, matching bytes, and matching checksums. Semantic trust therefore comes from the protected population boundary, approved fenced publisher, and independently verifiable provenance or sampled reproducibility checks where assurance warrants them. Readers need an emergency remotely controlled denylist or generation rotation path that takes effect without first deleting the object.
 
-### Readiness Manifest
+## Readiness Manifest
 
 Known-empty namespaces should bypass `sccache` rather than paying thousands of guaranteed misses.
 
@@ -167,30 +167,25 @@ Required states are:
 | Degraded        | Backend or integrity monitoring detected a problem                                    | Fall back to direct `rustc`                                                                        |
 | Rotated         | This generation is no longer selected                                                 | Follow the current generation pointer                                                              |
 
-Publication requires a remote writer lease with expiration and a monotonically increasing fencing epoch. A publisher may advance the current pointer only while its lease remains valid and only with compare-and-swap against the expected predecessor and sequence. Generation metadata records the predecessor, epoch, trusted workflow/run identity, workload digest, and terminal counts. Expired or superseded publishers may finish uploads but cannot publish an index, readiness state, or generation pointer.
+Publication uses this order:
 
-Pointer readers reject a lower sequence, unexpected predecessor, stale fencing epoch, invalid signature, or namespace mismatch. The platform preserves the currently selected and explicitly retained rollback generations and their referenced objects while a candidate populates. A job-controlled manifest or locally writable marker cannot grant authority or roll the pointer backward.
+1. Commit the declared compiler objects and account for all accepted writes.
+2. Seal the candidate generation under the current remote writer lease, excluding later canonical writes.
+3. Build, checksum, and commit any complete immutable index shards.
+4. Commit signed metadata containing the sequence, predecessor, fencing epoch, publisher/run identity, workload digest, and terminal counts.
+5. Activate the generation pointer through predecessor-checked compare-and-swap while the writer fence is current and the readiness conditions above hold.
 
-### Membership And Negative Index
+The remote writer lease has an expiration and a monotonically increasing fencing epoch. Expired or superseded publishers may finish uploads but cannot activate an index, readiness state, or generation pointer.
 
-A readiness manifest avoids guaranteed-empty work but does not answer whether an individual compiler key exists. A gateway can reduce repeated miss work with one of these designs:
+Pointer readers reject a lower sequence, unexpected predecessor, stale fencing epoch, invalid signature, or namespace mismatch. The platform preserves the currently selected and explicitly retained rollback generations and their referenced objects while a candidate populates. Failed, cancelled, timed-out, lease-expired, fenced, or missing-post jobs cannot activate readiness, index, or sticky-lineage pointers; leases expire independently of post hooks, and the broker denies refresh after completion or cancellation. A job-controlled manifest or locally writable marker cannot grant authority or roll the pointer backward.
 
-| Design                       | Advantages                                         | Risks and controls                                                                                        |
-| ---------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Sharded Bloom filter         | Compact, no false negatives if generated correctly | False positives still reach S3; rebuild and generation ordering required                                  |
-| Sharded Xor filter           | Compact and fast lookup                            | Immutable generation rebuilds; more complex producer                                                      |
-| Sorted manifest shards       | Exact membership and simple integrity              | Larger downloads and binary-search implementation                                                         |
-| DynamoDB index               | Low-latency mutable membership candidate           | S3 and index writes are not one transaction; negative answers are advisory until the generation is sealed |
-| Redis or Valkey index        | Fast mutable membership                            | Eviction and durability can create false negatives unless treated carefully                               |
-| Bounded local negative cache | Simple and useful during one job                   | Supplemental only; short TTL and namespace generation key required                                        |
+## Membership And Negative Index
 
-Do not list an entire compiler-object prefix at job start. Full listings are unbounded, require broad `ListBucket`, race concurrent writers and lifecycle expiration, and can move rather than remove startup latency.
+Readiness describes a completed workload; membership describes individual keys. Negative membership may suppress origin lookup only for a sealed immutable generation whose complete index was built after every object write finished. Open or mutable indexes are advisory: a negative must fall through to origin. Stale metadata must not hide a valid object; false positives may cost an extra lookup.
 
-A negative membership result may suppress origin lookup only for a sealed immutable object generation whose complete index was built after every object write finished. For open or mutable generations, all indexes are advisory: positive results may optimize lookup, but negative results must fall through to origin. Generation sealing itself requires the current remote fencing token and prevents further canonical writes.
+Do not list an unbounded compiler-object prefix at job start. Use a bounded representation selected in the [gateway index design](gateway.md#membership-index).
 
-A probabilistic membership index must be designed so stale state can produce false positives, which only cause an origin lookup, but not false negatives that incorrectly suppress a valid cache hit. Generation metadata, sealing, monotonic fencing, and predecessor-checked pointer updates are required.
-
-### Lifecycle
+## Lifecycle
 
 The released bucket expires compiler objects by object age, not by last access. A warm object that is frequently read does not have its lifecycle age refreshed.
 
@@ -207,52 +202,7 @@ The target design should:
 
 Retention changes are experiments: longer retention can increase warm probability and storage cost, while shorter retention can turn otherwise reusable objects into cold misses.
 
-## Security And Threat Model
-
-### Protected Assets
-
-- Trusted compiler outputs later linked or executed by CI.
-- Repository and trust-domain isolation.
-- AWS and GitHub credentials.
-- KMS permissions.
-- Cache availability and cost budget.
-- Logs and metrics that can reveal repository identity or signed URLs.
-
-### Principal Threats
-
-| Threat                                                 | Consequence                                               | Required control                                                                                                                      |
-| ------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Untrusted job overwrites canonical object              | Cache poisoning and possible later code execution         | IAM-separated writer, conditional create, checksums, conflict alerts                                                                  |
-| Job lists or reads another repository                  | Confidentiality loss and cross-tenant leakage             | Exact broker policy, Access Point or bucket isolation, denial tests                                                                   |
-| Ordinary job deletes cache                             | Availability and cost attack                              | No routine `DeleteObject`; maintenance-only deletion                                                                                  |
-| Compromised workflow steals broad instance credentials | Cross-prefix mutation                                     | Remove broad direct-client role from cache path; use scoped sessions                                                                  |
-| Root workflow interferes with local gateway            | Denial, token theft within job authority                  | Remote enforcement, per-job least privilege, quotas, no security claim for loopback                                                   |
-| Replayed or forged writer admission                    | Canonical poisoning under a stale or wrong job identity   | Broker-specific OIDC audience, nonce, `jti`, run-attempt checks, immutable IDs, approved workflow SHA, independent RunsOn attestation |
-| Malformed cache object exhausts memory or disk         | Runner denial of service                                  | Size bounds, streaming/spill, checksums, quotas                                                                                       |
-| Backend error becomes a miss                           | Hidden outage and large compile regression                | Typed errors and explicit degrade policy                                                                                              |
-| Token expires mid-job                                  | Long lookup/write failures                                | Refresh, staged deadlines, circuit break, safe fallback                                                                               |
-| Sticky state crosses trust domains                     | Persistent poisoning or leakage                           | Trust-bound lineage, marker validation, read-only untrusted policy                                                                    |
-| Untrusted PR reads canonical objects                   | Repository-derived output or metadata exfiltration        | Default-off sensitive-repository policy, no listing, keyed-read limits, exact repository/trust isolation                              |
-| Stale publisher advances a generation or lineage       | Rollback, incomplete readiness, or divergent sticky state | Remote lease, monotonic fencing, predecessor CAS, external publication metadata                                                       |
-| Logs expose credentials or object identity             | Secret or metadata disclosure                             | Structured redaction and allow-listed fields                                                                                          |
-
-### Cache Poisoning
-
-Compiler-cache outputs are later consumed by trusted build steps. Treat shared compiler-cache write access as a software supply-chain capability.
-
-Controls:
-
-- Only a protected population identity writes canonical objects.
-- Objects are immutable under normal job credentials.
-- Conflicting duplicate writes are alerts.
-- Readers verify checksums, schema, approved generation, and publisher provenance.
-- Canonical namespace rotation is reviewable and auditable.
-- Corrupt objects are quarantined or bypassed, never silently repaired by an untrusted job.
-- Promotion includes malicious cross-prefix and conflicting-object tests.
-
-Checksums and first-writer-wins do not prove semantic authenticity. The same unrestricted job must not be allowed to fabricate both an object and the only evidence that it is trustworthy. High-assurance populations should consider independent rebuilds or sampled direct recompilation before activating a generation.
-
-### Credential Handling
+## Credential Handling
 
 - Prefer brokered short-lived credentials or a remote proxy over broad instance-profile access.
 - Require IMDSv2 as defense in depth, but assume root-capable workflow code can obtain any instance-profile credentials; the profile therefore carries no authority that violates the job's cache trust class.
@@ -261,7 +211,7 @@ Checksums and first-writer-wins do not prove semantic authenticity. The same unr
 - At close, revoke the loopback or remote-proxy capability, stop refresh, and remove local credential references. Direct AWS STS credentials normally remain valid until expiration unless an explicitly documented broader role-session revocation mechanism is invoked; in-memory zeroization is best effort.
 - Account for clock skew and the minimum STS session duration.
 
-### Binary Supply Chain
+## Binary Supply Chain
 
 - Pin exact `sccache` and gateway versions.
 - Verify published checksums or signatures.

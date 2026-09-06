@@ -15,11 +15,11 @@ The evidence has two parts:
 
 The controlled strategies were:
 
-| Strategy | Cargo inputs | Compiler outputs | Target state at job start |
-| --- | --- | --- | --- |
-| Input-only `rust-cache` | Registry and Git inputs restored | Not cached | Clean |
-| No Rust cache | Downloaded normally | Not cached | Clean |
-| Input-only cache with S3 `sccache` | Registry and Git inputs restored | Eligible compiler calls cached individually | Clean |
+| Strategy                           | Cargo inputs                     | Compiler outputs                            | Target state at job start |
+| ---------------------------------- | -------------------------------- | ------------------------------------------- | ------------------------- |
+| Input-only `rust-cache`            | Registry and Git inputs restored | Not cached                                  | Clean                     |
+| No Rust cache                      | Downloaded normally              | Not cached                                  | Clean                     |
+| Input-only cache with S3 `sccache` | Registry and Git inputs restored | Eligible compiler calls cached individually | Clean                     |
 
 The representative full-workload trials are preserved as sanitized phase-level JSONL:
 
@@ -33,20 +33,20 @@ The fixed representative workload covered the same monorepo build, lint, and tes
 
 ### End-To-End Results
 
-| Strategy and state | Trials | Workload wall time | Job wall time | Interpretation |
-| --- | ---: | ---: | ---: | --- |
-| Input-only archive, warm exact hit | 2 | 20m38.242s, 21m06.196s | 22m05s, 22m33s | Control average: 20m52.219s workload, 22m19s job |
-| No Rust cache | 2 | 20m36.417s, 21m20.929s | 22m01s, 22m45s | Control average: 20m58.673s workload, 22m23s job |
-| S3 `sccache` 0.17 default server mode with input-only `rust-cache`, population run | 1 | 25m54.103s | 27m23s | 21.3% slower workload than the same-profile no-cache trial |
-| S3 `sccache` 0.17 default server mode with input-only `rust-cache`, warm repeat | 1 | 10m11.120s | 11m42s | 52.3% less workload time and 48.6% less job time than the same-profile no-cache trial |
-| S3 `sccache` 0.17 default server mode without input archive, warm repeat | 1 | 9m50.353s | 11m14s | Preserved 6,929 hits with zero misses; directionally faster than the warm run with input-only `rust-cache` |
-| S3 `sccache` 0.17 client-side mode with input-only `rust-cache`, population run | 1 | 26m42.863s | 29m02s | Did not improve cold population |
-| S3 `sccache` 0.17 client-side mode with input-only `rust-cache`, warm repeat | 1 | 20m59.720s | 22m25s | 98.4% hit rate did not produce a useful warm speedup |
-| S3 `sccache` 0.17 read-only empty namespace with input-only `rust-cache` | 1 | 24m57.112s | 26m25s | Isolated miss lookup, hashing, wrapper, and miss-handling overhead without successful writes |
-| S3 `sccache` 0.17 client-side `disk,s3` with input-only `rust-cache`, population run | 1 | 26m21.958s | 27m49s | Background S3 writes did not improve cold wall time and did not all finish before teardown |
-| S3 `sccache` 0.17 client-side `disk,s3` with input-only `rust-cache`, warm repeat | 1 | 20m42.113s | 22m05s | 96.3% hit rate produced only a small improvement over no cache and remained far slower than default server mode |
-| Whole-target archive, population run | 1 | 21m10.816s | 25m21s | Workload tied the same-profile no-cache trial, but the cold save made the job 11.4% slower |
-| Whole-target archive, warm exact hit | 1 | 10m27.136s | 13m49s | 51.0% less workload time and 39.3% less job time than the same-profile no-cache trial |
+| Strategy and state                                                                   | Trials |     Workload wall time |  Job wall time | Interpretation                                                                                                  |
+| ------------------------------------------------------------------------------------ | -----: | ---------------------: | -------------: | --------------------------------------------------------------------------------------------------------------- |
+| Input-only archive, warm exact hit                                                   |      2 | 20m38.242s, 21m06.196s | 22m05s, 22m33s | Control average: 20m52.219s workload, 22m19s job                                                                |
+| No Rust cache                                                                        |      2 | 20m36.417s, 21m20.929s | 22m01s, 22m45s | Control average: 20m58.673s workload, 22m23s job                                                                |
+| S3 `sccache` 0.17 default server mode with input-only `rust-cache`, population run   |      1 |             25m54.103s |         27m23s | 21.3% slower workload than the same-profile no-cache trial                                                      |
+| S3 `sccache` 0.17 default server mode with input-only `rust-cache`, warm repeat      |      1 |             10m11.120s |         11m42s | 52.3% less workload time and 48.6% less job time than the same-profile no-cache trial                           |
+| S3 `sccache` 0.17 default server mode without input archive, warm repeat             |      1 |              9m50.353s |         11m14s | Preserved 6,929 hits with zero misses; directionally faster than the warm run with input-only `rust-cache`      |
+| S3 `sccache` 0.17 client-side mode with input-only `rust-cache`, population run      |      1 |             26m42.863s |         29m02s | Did not improve cold population                                                                                 |
+| S3 `sccache` 0.17 client-side mode with input-only `rust-cache`, warm repeat         |      1 |             20m59.720s |         22m25s | 98.4% hit rate did not produce a useful warm speedup                                                            |
+| S3 `sccache` 0.17 read-only empty namespace with input-only `rust-cache`             |      1 |             24m57.112s |         26m25s | Isolated miss lookup, hashing, wrapper, and miss-handling overhead without successful writes                    |
+| S3 `sccache` 0.17 client-side `disk,s3` with input-only `rust-cache`, population run |      1 |             26m21.958s |         27m49s | Background S3 writes did not improve cold wall time and did not all finish before teardown                      |
+| S3 `sccache` 0.17 client-side `disk,s3` with input-only `rust-cache`, warm repeat    |      1 |             20m42.113s |         22m05s | 96.3% hit rate produced only a small improvement over no cache and remained far slower than default server mode |
+| Whole-target archive, population run                                                 |      1 |             21m10.816s |         25m21s | Workload tied the same-profile no-cache trial, but the cold save made the job 11.4% slower                      |
+| Whole-target archive, warm exact hit                                                 |      1 |             10m27.136s |         13m49s | 51.0% less workload time and 39.3% less job time than the same-profile no-cache trial                           |
 
 Across the two controls, input-only caching saved an average 6.454 seconds of workload time and four seconds of job time relative to no Rust cache. That 0.5% workload difference is operationally a tie at this sample size.
 
@@ -62,14 +62,14 @@ The warm whole-target exact hit saved 10m53.793s of workload time and 8m56s of j
 
 ### Input-Only Restore Phases
 
-| Phase | Observed range |
-| --- | ---: |
+| Phase                          |   Observed range |
+| ------------------------------ | ---------------: |
 | Compressed Cargo-input archive | About 200–210 MB |
-| Lookup | 63–68ms |
-| Download | 0.778–1.201s |
-| Extraction | 0.193–0.196s |
-| Complete cache action | 1.607–2.015s |
-| PR post-save | Disabled |
+| Lookup                         |          63–68ms |
+| Download                       |     0.778–1.201s |
+| Extraction                     |     0.193–0.196s |
+| Complete cache action          |     1.607–2.015s |
+| PR post-save                   |         Disabled |
 
 The input archive itself was healthy and inexpensive. It nevertheless produced no measurable workload improvement because dependency-download avoidance was small relative to the roughly 21-minute compile, lint, and test workload.
 
@@ -77,20 +77,20 @@ The input archive itself was healthy and inexpensive. It nevertheless produced n
 
 The exact-key whole-target trial started from an empty namespace, saved once, and then reran the identical source and workload. It used normal checkout and the action's default `cache-workspace-crates: false`, so the archive was not a complete persistent build directory and the experiment does not isolate source-mtime effects.
 
-| Phase or metric | Cold population | Warm exact hit |
-| --- | ---: | ---: |
-| Cache lookup | 88ms miss | 46ms hit |
-| Compressed archive | 7,599,320,203 bytes | Same object |
-| Download | Not applicable | 26.161s |
-| Extraction | Not applicable | 90.998s |
-| Complete restore | Miss path only | 117.208s |
-| Workload | 21m10.816s | 10m27.136s |
-| Target after workload | 55,013,614,189 bytes; 46,647 files | 55,013,614,206 bytes; 46,647 files |
-| Cleanup before save | 1.561s | Not applicable |
-| Archive creation and compression | About 140.912s | Not applicable |
-| Upload | About 20.806s | Not applicable |
-| Complete post step | 2m44s | 92ms, save skipped on exact hit |
-| Job | 25m21s | 13m49s |
+| Phase or metric                  |                    Cold population |                     Warm exact hit |
+| -------------------------------- | ---------------------------------: | ---------------------------------: |
+| Cache lookup                     |                          88ms miss |                           46ms hit |
+| Compressed archive               |                7,599,320,203 bytes |                        Same object |
+| Download                         |                     Not applicable |                            26.161s |
+| Extraction                       |                     Not applicable |                            90.998s |
+| Complete restore                 |                     Miss path only |                           117.208s |
+| Workload                         |                         21m10.816s |                         10m27.136s |
+| Target after workload            | 55,013,614,189 bytes; 46,647 files | 55,013,614,206 bytes; 46,647 files |
+| Cleanup before save              |                             1.561s |                     Not applicable |
+| Archive creation and compression |                     About 140.912s |                     Not applicable |
+| Upload                           |                      About 20.806s |                     Not applicable |
+| Complete post step               |                              2m44s |    92ms, save skipped on exact hit |
+| Job                              |                             25m21s |                             13m49s |
 
 The cold workload was effectively tied with no cache: it was 10.113 seconds, or 0.8%, faster than the same-profile no-cache trial. The end-to-end cold job was nevertheless 2m36s slower because it created, compressed, and uploaded a 7.60 GB archive.
 
@@ -100,18 +100,18 @@ The warm exact hit materially reused target state and roughly halved workload ti
 
 ### Default-Server Full-Workload `sccache` Statistics
 
-| Metric | Population run | Warm repeat |
-| --- | ---: | ---: |
-| Compile requests | 8,350 | 8,350 |
-| Executed cacheable requests | 6,929 | 6,929 |
-| Cache hits | 1,329 | 6,928 |
-| Cache misses | 5,600 | 1 |
-| Non-cacheable calls | 1,421 | 1,421 |
-| Rust hits / misses | 2 / 5,136 | 5,137 / 1 |
-| Cache writes | 5,599 | Not material |
-| Cache errors | Not captured | 0 |
+| Metric                             |     Population run |           Warm repeat |
+| ---------------------------------- | -----------------: | --------------------: |
+| Compile requests                   |              8,350 |                 8,350 |
+| Executed cacheable requests        |              6,929 |                 6,929 |
+| Cache hits                         |              1,329 |                 6,928 |
+| Cache misses                       |              5,600 |                     1 |
+| Non-cacheable calls                |              1,421 |                 1,421 |
+| Rust hits / misses                 |          2 / 5,136 |             5,137 / 1 |
+| Cache writes                       |              5,599 |          Not material |
+| Cache errors                       |       Not captured |                     0 |
 | Aggregate cache-operation duration | 345.129s of writes | 645.039s of read hits |
-| Average observed operation | 61.6ms per write | 93.1ms per read hit |
+| Average observed operation         |   61.6ms per write |   93.1ms per read hit |
 
 The aggregate cache-operation durations overlap because many compiler requests execute concurrently. They are request-work totals, not elapsed phases, which is why the warm read-hit sum can exceed workload wall time.
 
@@ -121,16 +121,16 @@ The population run demonstrates the combined cost of compiling misses, looking u
 
 The original direct-S3 population and warm logs were rechecked and both reported `sccache` 0.17.0 in its default server mode. Follow-up trials used fresh isolated namespaces to compare client-side direct S3, a read-only cold control, and client-side multilevel `disk,s3`. All of those mode-comparison trials included the same input-only `Swatinem/rust-cache` layer; only the separately labelled default-server ablation omitted it. The fixed workload and compiler settings were preserved, but some follow-up trials used different c8a/r8a memory and storage profiles; all selected families used the same AMD EPYC 9R45 processor model. Cross-profile timing differences remain directional rather than controlled family rankings.
 
-| Variant | Cargo-input archive | State | Workload | Job | Hits / misses | Key observation |
-| --- | --- | --- | ---: | ---: | ---: | --- |
-| Default server with direct S3 | Input-only `rust-cache` | Population | 25m54.103s | 27m23s | 1,329 / 5,600 | Strong cold regression |
-| Default server with direct S3 | Input-only `rust-cache` | Warm | 10m11.120s | 11m42s | 6,928 / 1 | Strong warm result |
-| Default server with direct S3 | None | Warm | 9m50.353s | 11m14s | 6,929 / 0 | Fastest measured warm result; one cross-family ablation |
-| Client-side with direct S3 | Input-only `rust-cache` | Population | 26m42.863s | 29m02s | 1,330 / 5,441 | 5,441 writes; no cold improvement |
-| Client-side with direct S3 | Input-only `rust-cache` | Warm | 20m59.720s | 22m25s | 6,661 / 110 | High hit rate concealed a slow remote-read path |
-| Default server with direct S3, read-only | Input-only `rust-cache` | Empty namespace | 24m57.112s | 26m25s | 0 / 6,929 | No successful writes; most cold penalty remained |
-| Client-side with `disk,s3` | Input-only `rust-cache` | Population | 26m21.958s | 27m49s | 1,324 / 5,447 | 5,447 local writes, but only 5,197 S3 writes completed |
-| Client-side with `disk,s3` | Input-only `rust-cache` | Warm partial | 20m42.113s | 22m05s | 6,521 / 250 | Ephemeral L0 had no cross-job hits; remote reads remained expensive |
+| Variant                                  | Cargo-input archive     | State           |   Workload |    Job | Hits / misses | Key observation                                                     |
+| ---------------------------------------- | ----------------------- | --------------- | ---------: | -----: | ------------: | ------------------------------------------------------------------- |
+| Default server with direct S3            | Input-only `rust-cache` | Population      | 25m54.103s | 27m23s | 1,329 / 5,600 | Strong cold regression                                              |
+| Default server with direct S3            | Input-only `rust-cache` | Warm            | 10m11.120s | 11m42s |     6,928 / 1 | Strong warm result                                                  |
+| Default server with direct S3            | None                    | Warm            |  9m50.353s | 11m14s |     6,929 / 0 | Fastest measured warm result; one cross-family ablation             |
+| Client-side with direct S3               | Input-only `rust-cache` | Population      | 26m42.863s | 29m02s | 1,330 / 5,441 | 5,441 writes; no cold improvement                                   |
+| Client-side with direct S3               | Input-only `rust-cache` | Warm            | 20m59.720s | 22m25s |   6,661 / 110 | High hit rate concealed a slow remote-read path                     |
+| Default server with direct S3, read-only | Input-only `rust-cache` | Empty namespace | 24m57.112s | 26m25s |     0 / 6,929 | No successful writes; most cold penalty remained                    |
+| Client-side with `disk,s3`               | Input-only `rust-cache` | Population      | 26m21.958s | 27m49s | 1,324 / 5,447 | 5,447 local writes, but only 5,197 S3 writes completed              |
+| Client-side with `disk,s3`               | Input-only `rust-cache` | Warm partial    | 20m42.113s | 22m05s |   6,521 / 250 | Ephemeral L0 had no cross-job hits; remote reads remained expensive |
 
 The read-only cold control was 3m36.183s, or 16.9%, slower than the same-profile no-cache workload even though it successfully uploaded nothing. Default-server read-write cold added only 56.991 seconds over that read-only trial. This means successful uploads contributed to the cold regression but did not explain most of it. Hashing, remote miss lookups, wrapper and miss handling, compiler-process interactions, and run variance remained on the path. The reported 6,929 write errors in the read-only trial were expected policy rejections rather than backend failures.
 
@@ -144,11 +144,11 @@ This shorter benchmark compared c8a with m8idn, which is a different runner and 
 
 ### Compute-Optimized 16-vCPU Runner
 
-| Strategy | Average job | Average build step | Cache setup | Result |
-| --- | ---: | ---: | ---: | --- |
-| Input-only cache | 82.5s | 54.0s | About 10s | Small net benefit |
-| No Rust cache | 87.5s | 69.0s | 0s | Simplest baseline |
-| Warm S3 `sccache` with input cache | 69.0s | 40.5s | About 9–10s | Fastest tested |
+| Strategy                           | Average job | Average build step | Cache setup | Result            |
+| ---------------------------------- | ----------: | -----------------: | ----------: | ----------------- |
+| Input-only cache                   |       82.5s |              54.0s |   About 10s | Small net benefit |
+| No Rust cache                      |       87.5s |              69.0s |          0s | Simplest baseline |
+| Warm S3 `sccache` with input cache |       69.0s |              40.5s | About 9–10s | Fastest tested    |
 
 Input-only caching saved about 15 seconds in the build step but spent about 10 seconds on cache setup, for only about five seconds of end-to-end benefit.
 
@@ -156,26 +156,27 @@ Warm `sccache` improved the build step by about 41% and the full job by about 21
 
 ### `sccache` Statistics
 
-| Metric | Observation |
-| --- | ---: |
-| Compile requests | 1,861 |
-| Executed cacheable requests | 1,413 |
-| Cache hits | 1,410 |
-| Cache misses in corrected warm runs | 0 |
-| Non-cacheable calls | 442 |
-| Cache errors | 0 |
+| Metric                              | Observation |
+| ----------------------------------- | ----------: |
+| Compile requests                    |       1,861 |
+| Executed cacheable requests         |       1,413 |
+| Cache hits                          |       1,410 |
+| Cache misses in corrected warm runs |           0 |
+| Non-cacheable calls                 |         442 |
+| Cache errors                        |           0 |
 
 These results contradict the claim that `sccache` provided no meaningful benefit. They also show why a 100% hit rate among cacheable calls does not produce an instant build: Cargo orchestration, per-object lookup/materialization, build scripts, procedural macros, non-cacheable calls, and final linking remain.
 
 ### Network- And NVMe-Oriented 16-vCPU Runner
 
-| Strategy | Average job | Average build step | Difference from compute-optimized job |
-| --- | ---: | ---: | ---: |
-| Input-only cache | 105.5s | 71.5s | 27.9% slower |
-| No Rust cache | 106.5s | 90.0s | 21.7% slower |
-| Warm S3 `sccache` with input cache | 81.0s | 49.0s | 17.4% slower |
+| Strategy                           | Average job | Average build step | Difference from compute-optimized job |
+| ---------------------------------- | ----------: | -----------------: | ------------------------------------: |
+| Input-only cache                   |      105.5s |              71.5s |                          27.9% slower |
+| No Rust cache                      |      106.5s |              90.0s |                          21.7% slower |
+| Warm S3 `sccache` with input cache |       81.0s |              49.0s |                          17.4% slower |
 
 Higher peak network capacity and local NVMe did not improve this workload. The result points to CPU/compiler throughput and per-object orchestration as more important than bulk network or disk bandwidth for this benchmark.
+
 ## Interpretation
 
 - Input-only `rust-cache` is healthy and low risk but offered only a small net gain in the controlled benchmark.
@@ -209,3 +210,35 @@ Higher peak network capacity and local NVMe did not improve this workload. The r
 - Use [`Swatinem/rust-cache` with mtime-preserving checkout](../approaches/rust-cache-mtime-checkout.md) and the [source-keyed target workaround](../approaches/rust-cache-source-keyed-target-cache.md) only as conditional whole-target designs with explicit size and timing guardrails, given the growth behavior in [Target Archive Growth In Production](target-archive-growth.md).
 - Evaluate [RunsOn sticky disks](../deployments/runs-on/README.md#sticky-disk-options) only after the required platform upgrade and with native-disk lifecycle controls.
 - Follow [Measuring Cache Performance](../operations/measuring-cache-performance.md) when reproducing or extending these comparisons.
+
+## Planning model
+
+This descriptive model uses the full-workload observations above to examine warm-state frequency. It is an inference from archived measurements, not another experiment or a production prediction.
+
+| Same-profile state            | Job wall time |
+| ----------------------------- | ------------: |
+| Direct `rustc`, no Rust cache |        1,365s |
+| Direct-S3 population          |        1,643s |
+| Direct-S3 warm repeat         |          702s |
+| Empty read-only namespace     |        1,585s |
+
+The empty read-only trial shows that successful uploads were not the sole cold penalty. It does not isolate the remaining cost as S3 miss latency because wrapper and daemon work, hashing, remote lookup and handling, compiler interaction, rejected writes, and run variance remain combined.
+
+For a simplified workload in which a cache-enabled job is either a 1,643-second population state or a 702-second warm state, with warm probability `p`, the descriptive expected saving against the 1,365-second direct baseline is:
+
+```text
+S(p) = 1365 - ((1 - p) * 1643 + p * 702)
+     = 941p - 278 seconds per job
+```
+
+This model gives:
+
+| Goal                         | Required warm probability |
+| ---------------------------- | ------------------------: |
+| Break even                   |                    29.54% |
+| At least 5% expected saving  |                    36.80% |
+| At least 10% expected saving |                    44.05% |
+
+These are planning thresholds, not stable production estimates. Most full-workload cache states had one trial, source changes produce partial reuse rather than binary cold or warm states, and runner/profile variation remains.
+
+One multilevel population trial completed 5,197 of 5,447 expected remote writes before teardown. The next run reported exactly 250 misses. That matching count is strong evidence that untracked background completion matters operationally, even though it does not establish that every miss had no other possible cause.

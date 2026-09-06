@@ -33,7 +33,7 @@ When a decision in [`docs/decisions/README.md`](README.md) changes, append an en
 - Reviewed: 2026-09-06.
 - Prior coverage: The current decisions covered sccache and Cargo/filesystem approaches; they did not classify Mr. Boxington or Kache. The expanded proposal also needed to distinguish old upstream limitations from later releases.
 - Change: Added experimental D9 and untested D10, retaining D1–D8. Kept local and fresh-runner evidence separate, documented the newer Mr. Boxington action's target-payload default and the merged registry-mapping fix without claiming a local retest, narrowed the cold-cache causal interpretation, and recorded the OpenDAL 0.59.0 GHA finalization and S3 Express updates against the sccache 0.17.0 dependency. The blanket directory-bucket conditional-PUT restriction is not retained; qualify the exact client and operation.
-- Basis: [Mr. Boxington evidence](../evidence/mr-boxington-vs-sccache.md), [Kache source status](../reference/vendor-ci-cache-sources.md#kache-not-tested), and [versioned source refresh](../research/runs-on-sccache/baseline.md#release-refresh-2026-09-06). No new workload benchmark or cloud deployment was performed for this integration.
+- Basis: [Mr. Boxington evidence](../evidence/mr-boxington-vs-sccache.md), [Kache source status](../reference/vendor-ci-cache-sources.md#kache-not-tested), and [versioned source refresh](../reference/compiler-cache-implementation.md#release-refresh-2026-09-06). No new workload benchmark or cloud deployment was performed for this integration.
 
 <!--
 Template for future entries:

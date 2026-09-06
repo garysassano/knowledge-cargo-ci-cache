@@ -1,10 +1,8 @@
 # Proposed RunsOn compiler-cache gateway
 
-Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](baseline.md#release-refresh-2026-09-06).
+Status: Proposed and untested integration work. This page specifies requirements; it does not describe a released RunsOn feature. Use [the research index](README.md) for scope, sequencing, and the [version refresh](../../reference/compiler-cache-implementation.md#release-refresh-2026-09-06).
 
-## Improvement 4: RunsOn-Managed Loopback Gateway
-
-### Why A Gateway
+## Why A Gateway
 
 The current direct path sends per-object requests through the daemon's shared remote-storage client and gives the workflow's runner role broad cache authority. A RunsOn-managed gateway can centralize performance and lifecycle work that is difficult to coordinate through workflow environment variables:
 
@@ -21,7 +19,7 @@ The current direct path sends per-object requests through the daemon's shared re
 
 The gateway does not make same-host credentials secret from root-capable workflow code. Its security value comes from narrowing the capability that exists for that job, keeping policy enforcement remote, and avoiding broad instance-profile access.
 
-### Protocol Options
+## Protocol Options
 
 | Job-to-gateway protocol                                  | Advantages                                                                            | Disadvantages                                                                                                   | Disposition                                         |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
@@ -32,7 +30,7 @@ The gateway does not make same-host credentials secret from root-capable workflo
 
 The prototype should use WebDAV for compiler-object transport and a separate authenticated control API for session, readiness, drain, and statistics. It should not extend WebDAV semantics ad hoc when a control operation is not an object read or write.
 
-### Component Model
+## Component Model
 
 ```mermaid
 flowchart LR
@@ -67,24 +65,13 @@ flowchart LR
 
 The implementation can combine these boxes in one process initially, but their contracts should remain distinct so storage, authorization, and queueing can evolve independently.
 
-### Session Establishment
+## Session Establishment
 
-1. The gateway requests a one-time broker nonce and independently attested RunsOn instance and control-plane state.
-2. `runs-on/action` obtains a fresh GitHub Actions OIDC ID token whose audience names the compiler-cache broker and binds the nonce into the admission exchange.
-3. The gateway presents the OIDC token, nonce, requested mode, and platform attestation to the remote broker over an authenticated channel.
-4. The broker validates issuer, audience, signature, temporal claims, unique token identifier, immutable owner and repository IDs, approved workflow identity and SHA, event class, run ID and attempt, `check_run_id` when available, and the separate runner binding.
-5. The broker rejects replay, stale or cancelled runs, unapproved workflow graphs, and any request whose locally supplied identity fields conflict with signed or control-plane state.
-6. The broker returns a session policy, remote-proxy capability, or STS session limited to the selected repository, trust domain, namespace schema, generation, fencing epoch, and read/write mode.
-7. The gateway records only a non-secret session digest, expiration, policy class, and fencing metadata.
-8. The action receives a one-job loopback bearer token or socket capability, not broad cloud credentials.
-9. The gateway refreshes remote credentials before expiry only while a new broker check confirms that the run and lease remain active.
-10. Session expiry stops new origin operations and triggers direct-compiler fallback on the next safe invocation boundary.
+Use the [writer admission contract](trust-and-publication.md#writer-session-admission) for OIDC claims, nonce/replay checks, platform attestation, and authorization. The gateway relays the admission exchange over an authenticated channel and receives a scoped remote-proxy capability or STS session. The action receives a one-job loopback bearer token or socket capability.
 
-Runtime/cache tokens, `GITHUB_TOKEN`, arbitrary bearer tokens, environment variables, action inputs, and locally supplied repository or event fields are not accepted as workload identity.
+Record only the non-secret session digest, policy, expiry, and fencing metadata. Refresh before expiry only while the broker confirms that the run and lease are active. Expiry stops new origin operations and uses the [safe fallback boundary](action-lifecycle.md#fallback-semantics). Loopback credentials do not isolate the gateway from root-capable job code.
 
-If the gateway process is on the runner, root-capable workflow code can steal or directly exercise the job's loopback capability. The remote session therefore must be no broader than the job is allowed to exercise, and a canonical writer session is issued only to a protected population job whose complete executable graph is trusted.
-
-### Read Path
+## Read Path
 
 For a compiler-object key:
 
@@ -106,7 +93,7 @@ The gateway should return not-found only for a confirmed absence or an explicitl
 
 An object read from a private overlay, untrusted sticky lineage, or other lower-trust tier may satisfy only that same or a lower-trust consumer. It must never backfill, update membership for, or otherwise flow into canonical storage.
 
-### Request Coalescing
+## Request Coalescing
 
 Concurrent rustc invocations can request identical dependency objects. The gateway should maintain a bounded single-flight map keyed by:
 
@@ -125,7 +112,7 @@ Followers wait on the leader's result up to their own deadline. The coordinator 
 - Report origin fan-out avoided, follower wait, leader latency, and cancellation.
 - Never let one oversized or stalled key block unrelated keys.
 
-### Negative Caching
+## Negative Caching
 
 Negative entries should be:
 
@@ -137,7 +124,7 @@ Negative entries should be:
 
 A negative cache is especially valuable for repeated invocations within one job, but an excessive TTL can hide an object concurrently published by a trusted writer.
 
-### Write Acknowledgement Modes
+## Write Acknowledgement Modes
 
 | Mode                                 | Acknowledgement point                                                                                             | Durability                                             | Intended use                                                             |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------ |
@@ -170,7 +157,7 @@ A later replay mode must also:
 
 An ephemeral EBS volume that disappears with the runner is not durable merely because writes were fsynced.
 
-### Write Queue And Backpressure
+## Write Queue And Backpressure
 
 The queue needs explicit limits for:
 
@@ -193,31 +180,22 @@ When admission is full, choose one visible policy:
 
 Never accept an unbounded queue or silently discard a supposedly committed canonical write.
 
-### Index Publication
+## Membership index
 
-The gateway or trusted writer should publish immutable index generations:
+Choose a representation against object cardinality, memory, build/download cost, and the [sealed-generation membership rule](trust-and-publication.md#membership-and-negative-index):
 
-```text
-index/v1/<generation>/metadata.json
-index/v1/<generation>/shard-0000
-index/v1/<generation>/shard-0001
-...
-index/v1/current
-```
+| Design                       | Advantages                                         | Risks and controls                                                                                        |
+| ---------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Sharded Bloom filter         | Compact, no false negatives if generated correctly | False positives still reach S3; rebuild and generation ordering required                                  |
+| Sharded Xor filter           | Compact and fast lookup                            | Immutable generation rebuilds; more complex producer                                                      |
+| Sorted manifest shards       | Exact membership and simple integrity              | Larger downloads and binary-search implementation                                                         |
+| DynamoDB index               | Low-latency mutable membership candidate           | S3 and index writes are not one transaction; negative answers are advisory until the generation is sealed |
+| Redis or Valkey index        | Fast mutable membership                            | Eviction and durability can create false negatives unless treated carefully                               |
+| Bounded local negative cache | Simple and useful during one job                   | Supplemental only; short TTL and namespace generation key required                                        |
 
-Publication order:
+One illustrative layout is `index/v1/<generation>/metadata.json`, immutable `shard-0000` files, and an `index/v1/current` pointer. Follow the [single publication sequence](trust-and-publication.md#readiness-manifest). Readers validate metadata and shards before use; invalid or unavailable indexes fall back to bounded origin lookups instead of suppressing hits.
 
-1. Commit compiler objects.
-2. Seal the candidate generation under the current remote writer lease so no later canonical object write can enter it.
-3. Build and checksum the complete index shards.
-4. Commit immutable shards.
-5. Commit signed generation metadata containing sequence, predecessor, fencing epoch, writer/run identity, workload digest, and terminal counts.
-6. Compare-and-swap the selected generation pointer only if it still names the expected predecessor and the writer fence is current.
-7. Make readiness effective through that pointer activation only after rejected, failed, deferred, and unfinished writes are zero.
-
-Readers reject sequence rollback, predecessor mismatch, stale fencing epochs, and invalid signatures. They validate metadata and shards before use. If validation fails, they may fall back to origin lookups rather than suppressing hits. The platform retains objects referenced by the selected and explicit rollback generations while a replacement candidate is built.
-
-### Control API
+## Control API
 
 The prototype should expose a small versioned local API:
 
@@ -234,33 +212,15 @@ The prototype should expose a small versioned local API:
 
 The API must be idempotent where retries are expected. `CloseSession` must not imply successful drain unless drain status proves it. Direct AWS STS credentials normally remain valid until expiration; closing a local session is not ordinary per-session STS revocation, and in-memory zeroization is best effort.
 
-### Drain State Machine
+## Drain integration
 
-```text
-OPEN -> QUIESCING -> DRAINING -> CLOSED
-```
+Implement the [action lifecycle's post transaction](action-lifecycle.md#post-transaction): `OPEN -> QUIESCING -> DRAINING -> CLOSED`. The control API exposes those transitions and terminal counts; it does not define a second shutdown contract. Missing-post and stale-writer behavior follows [publication authority](trust-and-publication.md#readiness-manifest).
 
-- `OPEN`: new compiler producers and their requests may be admitted.
-- `QUIESCING`: no new compiler producer starts; already admitted producers may finish their one compiler attempt and terminal cache request.
-- `DRAINING`: active producers are zero, backfills are disabled, the accepted-write watermark is fixed, and the gateway drains through it.
-- `CLOSED`: terminal counts are reported atomically, authority refresh is stopped, and local resources are released.
+## Gateway failure policy
 
-Cancellation, lease expiry, runner loss, or SIGKILL can bypass the post step. Server-side leases therefore expire independently, the broker rejects refresh for completed or cancelled runs, and a run without a current fenced completion record can never advance readiness, index, or sticky-lineage pointers. Late origin completions remain unselected until a later valid population accounts for them.
+Use the [shared failure matrix](validation.md#failure-and-fallback-matrix) for ordinary-reader and population outcomes. A strict population must fail without publishing when queue admission, drain, integrity, or authority requirements fail. Cache failures must respect the [one-compiler fallback rule](action-lifecycle.md#fallback-semantics).
 
-### Gateway Failure Policy
-
-| Failure                      | Ordinary reader behavior                     | Canonical writer behavior                                                  |
-| ---------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
-| Gateway unavailable at setup | Direct `rustc` fallback                      | Strict failure or direct fallback by explicit policy                       |
-| Readiness absent             | Direct `rustc` bypass                        | Start controlled population                                                |
-| Origin circuit open          | Fast miss or direct fallback                 | Stop writes and fail population result                                     |
-| Local L0 corruption          | Quarantine and fetch origin                  | Quarantine, fetch origin, alert                                            |
-| Index corrupt or unavailable | Ignore index and use bounded origin lookup   | Stop index publication; object writes may continue only by policy          |
-| Queue full                   | Reject cache write, keep compilation         | Backpressure then fail population if unresolved                            |
-| Drain timeout                | Report unfinished writes                     | Fail population result and do not publish ready                            |
-| Gateway crash during compile | Do not rerun ambiguous compile automatically | Mark session failed; next safe invocation uses direct compiler if possible |
-
-### Gateway Deployment Shapes
+## Gateway Deployment Shapes
 
 | Shape                                  | Performance                                   | Isolation                                        | Operational cost | Use                                                           |
 | -------------------------------------- | --------------------------------------------- | ------------------------------------------------ | ---------------- | ------------------------------------------------------------- |

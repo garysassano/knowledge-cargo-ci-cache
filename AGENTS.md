@@ -2,37 +2,17 @@
 
 This repository archives Rust/Cargo CI cache research, decisions, evidence, and copyable GitHub Actions examples. Optimize edits for accuracy, low duplication, and easy retrieval by other agents.
 
-Use the routing table below to load only the pages relevant to the task instead of reading the entire archive.
+## Start here
 
-## Canonical Entry Points
+Use [Documentation](docs/README.md) for the canonical reader routes, category ownership, and page conventions. Load the relevant category index and focused pages instead of reading the entire archive.
 
-| Task | Use |
-| --- | --- |
-| Get the current recommendation quickly | `docs/quickstart.md` |
-| See current conclusions and their status | `docs/decisions/README.md` |
-| See superseded or revised conclusions | `docs/decisions/history.md` |
-| Understand documentation ownership | `docs/README.md` |
-| Choose or compare cache approaches | `docs/approaches/README.md` |
-| Choose or apply a RunsOn cache/disk deployment | `docs/deployments/runs-on/README.md` |
-| Configure fast CI tool setup | `docs/operations/mise-tool-setup.md` |
-| Measure cache phases and runner bottlenecks | `docs/operations/measuring-cache-performance.md` |
-| Explain Cargo freshness/no-op behavior | `docs/concepts/cargo-freshness-model.md` |
-| Map Cargo state paths to cache coverage | `docs/concepts/cargo-path-coverage.md` |
-| Explain cache primitives | `docs/concepts/cache-primitives.md` |
-| Explain `Swatinem/rust-cache` inputs and cleanup | `docs/concepts/rust-cache-behavior.md` |
-| Diagnose rebuilds | `docs/operations/diagnosing-rebuilds.md` |
-| Compare Mr. Boxington with sccache | `docs/approaches/mr-boxington.md` and `docs/evidence/mr-boxington-vs-sccache.md` |
-| Diagnose compiler-cache setup, Docker paths, or ineffective exact restores | `docs/operations/diagnosing-compiler-cache-integration.md` |
-| Find Kache and provider documentation/blog posts | `docs/reference/vendor-ci-cache-sources.md` |
-| Explore unimplemented RunsOn sccache improvements | `docs/research/runs-on-sccache/README.md` |
-| Review measured evidence | `docs/evidence/README.md` |
-| Read detailed freshness signals, examples, or historical notes | `docs/reference/README.md` |
-| Review Rust CI cache ecosystem sources | `docs/reference/vendor-ci-cache-sources.md` |
-| Record machine-readable cache measurements | `docs/reference/cache-measurement-schema.md` |
-| Refresh examples and assumptions | `docs/operations/maintenance-checklist.md` |
-| Copy workflow shapes | `examples/README.md` and `examples/workflows/` |
-| Understand the local snapshot fork | `examples/actions/snapshot/README.md` |
-| Understand the S3 Files mount action | `examples/actions/s3-files-mount/action.yml` |
+| Need                                     | Entry point                                                                                                                                    |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current answer and status                | [Quickstart](docs/quickstart.md) and [Decisions](docs/decisions/README.md)                                                                     |
+| Apply a cache approach                   | [Approaches](docs/approaches/README.md), [RunsOn deployment](docs/deployments/runs-on/README.md), and [Examples](examples/README.md)           |
+| Diagnose or measure                      | [Operations](docs/operations/README.md) and [Evidence](docs/evidence/README.md)                                                                |
+| Verify implementation or external claims | [Implementation reference](docs/reference/compiler-cache-implementation.md) and [ecosystem sources](docs/reference/vendor-ci-cache-sources.md) |
+| Explore unimplemented work               | [Research ownership map](docs/research/runs-on-sccache/README.md) and its single roadmap                                                       |
 
 ## Retrieval and claim handling
 
@@ -46,32 +26,17 @@ The archive's conclusions are maintained canonically in `docs/decisions/README.m
 
 Treat the conclusions as archived, not as timeless upstream facts. Before changing any action version, service behavior, or recommendation that depends on current external behavior, follow `docs/operations/maintenance-checklist.md`, verify the relevant upstream documentation, and record the change in `docs/decisions/history.md`.
 
-## Duplication Rules
+## Ownership and duplication
 
-- Keep current conclusions in `docs/decisions/README.md` and superseded conclusions in `docs/decisions/history.md`; summarize and link instead of restating them.
-- Keep approach selection and tradeoffs in `docs/approaches/README.md`.
-- Keep test setup, observations, measurements, interpretation, and limitations in focused pages under `docs/evidence/`.
-- Do not maintain a chronological experiment log; move durable findings into the relevant concept, approach, operation, or evidence page.
-- Keep diagnostic procedures in `docs/operations/diagnosing-rebuilds.md`.
-- Keep `Swatinem/rust-cache` input and cleanup semantics in `docs/concepts/rust-cache-behavior.md`.
-- Keep dense technical details, long tables, historical notes, and official-reference collections in `docs/reference/` when they would make first-read pages heavy.
-- Keep RunsOn runner, Magic Cache, direct S3 `sccache`, and sticky-disk guidance in `docs/deployments/runs-on/README.md`, and keep generic Cargo guidance out of it; the deployment links to the canonical approach, concept, and operation pages instead of copying their configuration.
-- Keep sanitized measurement records as JSONL in `docs/evidence/data/` beside the evidence page that cites them; keep the record contract in `docs/reference/cache-measurement-schema.md` and the copyable synthetic example in `examples/measurements/`.
-- Keep supported copyable workflow examples in `examples/workflows/`; keep explicitly unmeasured workflow designs under `docs/research/` with their qualification requirements.
-- Keep proposals, unresolved implementation dependencies, and promotion gates in focused pages under `docs/research/`; link to them without presenting proposed interfaces as released features.
-- Keep the compact measurement contract in `docs/reference/cache-measurement-schema.md` and dense field definitions in `docs/reference/cache-measurement-fields.md`.
-- Link to canonical pages instead of repeating long tables or result summaries.
+Follow the [canonical ownership and page conventions](docs/README.md#canonical-ownership). In particular:
 
-## Page Conventions
-
-- Quickstart and landing pages stay short, opinionated, and link-heavy.
-- Concept pages explain stable models and semantics, then link to reference pages for dense tables or examples.
-- Approach pages use this order where applicable: status summary, related files, design/architecture, operational details, strengths, limitations, evidence, decision.
-- Operation pages contain a purpose, recommended procedure or configuration, ordering, caveats, and references.
-- Evidence pages contain a question, test setup or progression, observations, interpretation, limitations, and implications.
-- Reference pages preserve dense tables, examples, historical notes, and official references.
-- Deployment pages contain an ownership statement, platform-specific deltas, the workflow shape, maintenance notes, and related-page links; they link to generic approach/concept/operation pages instead of restating configuration.
-- Category `README.md` files use a short ownership statement followed by a `Page | Purpose` table or a decision matrix.
+- Keep conclusions in decisions/history, selection in approaches, configuration in operations/deployments, and measurements with setup and limitations in evidence. Link to each owner instead of repeating result tables, long checklists, or recommendations.
+- Preserve versioned source behavior in reference and unimplemented designs under research. Keep one research task inventory and one owner per shared contract; validation links to those contracts and adds test assertions.
+- Preserve failed experiments and superseded conclusions when they explain a decision. Do not maintain a chronological experiment diary.
+- Keep sanitized measurements in `docs/evidence/data/`, the compact JSONL contract and detailed field vocabulary in reference, and the synthetic example in `examples/measurements/`.
+- Keep supported copyable workflows in `examples/workflows/`; explicitly unmeasured workflow designs stay under research until qualified.
+- Preserve provider documentation and blog URLs when reorganizing the ecosystem catalog. Keep untested candidates, including Kache, labeled explicitly.
+- Brief claim-status and version caveats may repeat for independent retrieval; complete procedures and behavioral rules must link to their owner.
 
 ## Markdown Style
 
@@ -89,6 +54,7 @@ When editing workflow examples:
 - Preserve resolved compiler identity in source-keyed target keys by hashing `rustc -Vv` with source state.
 - Do not add a broad target `restore-keys` fallback to source-keyed target examples; use one trusted target-cache writer.
 - Preserve the generic nature of examples; do not add app-specific package names, secrets, runner labels, or deployment steps unless a page explicitly documents them as examples.
+- Preserve the [canonical Cargo path ownership rule](docs/concepts/cargo-path-coverage.md#compatibility-rule-canonical): archive-managed and snapshot/sticky-managed caches must not own the same paths.
 
 ## Validation
 
@@ -96,12 +62,15 @@ Run these checks after relevant edits:
 
 ```bash
 git diff --check
+python scripts/check_docs.py
 actionlint examples/workflows/*.yml
 yq eval-all --exit-status 'true' examples/workflows/*.yml examples/actions/*/action.yml
 actionlint docs/research/runs-on-sccache/*.yml
 yq eval-all --exit-status 'true' docs/research/runs-on-sccache/*.yml
 (cd examples/actions/snapshot && go test ./...)
 ```
+
+When changing the documentation checker, also run `python -m unittest discover -s scripts -p 'test_*.py'`. It uses only the Python standard library.
 
 If `actionlint`, `yq`, or `go` is unavailable, say so and use a compatible tool declared in `~/.config/mise/config.toml`.
 

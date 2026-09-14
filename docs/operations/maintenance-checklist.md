@@ -1,6 +1,6 @@
 # Maintenance Checklist
 
-Use this checklist when refreshing the archive or copying its examples into a live repository. For new material, first follow the [AGENTS ingestion checklist](../../AGENTS.md#ingesting-new-information), including applicability, ownership, storage mapping, and source status.
+Use this checklist when refreshing the archive or copying its examples into a live repository. For new material, first follow the [ingestion checklist](../README.md#ingesting-new-information), including applicability, ownership, storage mapping, and source status.
 
 ## Decisions
 

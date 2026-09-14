@@ -50,9 +50,21 @@ For each new technique, identify applicability (direct GitHub Actions implementa
 
 Use [Decisions](decisions/README.md) to identify the adopted or experimental status, then retrieve the relevant approach and evidence. Treat measured results, pinned implementation observations, reasoned inferences, and proposed designs as different claim classes. Always carry a measurement's versions, workload, cache state, sample count, and limitations into an answer. Use [provider profiles](providers/README.md) for first-party documentation and blog posts and [tool profiles](tools/compiler-caches.md) for explicitly untested products; their claims do not establish local benchmark results.
 
-Use the [AGENTS ingestion checklist](../AGENTS.md#ingesting-new-information) when adding or refreshing material.
+Use the [ingestion checklist](#ingesting-new-information) when adding or refreshing material.
 
 Short status and version caveats may repeat so independently retrieved pages remain interpretable. Complete task inventories, procedures, result tables, and behavioral contracts have one owner. Within research, use the [ownership map](research/runs-on-sccache/README.md) and link to shared contracts rather than maintaining another checklist.
+
+## Ingesting new information
+
+1. Search existing tool names and aliases, provider names, strategy pages, source URLs, and decision IDs before creating a page. Prefer enriching the existing owner; a newly discovered article is not automatically a new strategy.
+2. Use the [ownership map](#canonical-ownership): named implementations belong in tools, combinations and tradeoffs in approaches, provider capabilities and blog sources in providers, storage semantics in concepts, measurements in evidence, procedures in operations or deployments, and unstable work or implementation proposals in research.
+3. Record a concise applicability and status statement plus a review date. Distinguish an open-source component usable directly in GitHub Actions from a provider-dependent service, another CI platform, or an unstable experiment. Check the component's actual license and source; a public action does not establish that its backend is open source. Use “not assessed” when unknown.
+4. Link primary sources near external claims and record the relevant version, platform, cache layer, backend or protocol, and persistence lifetime. Keep provider timing claims separate from local measurements.
+5. Summarize durable new information in its canonical owner and cross-link related tools, strategies, storage, and providers. Preserve contradictory or superseded evidence in context; resolve changed current conclusions through decisions and history. Do not silently turn an upstream fix into a local retest.
+6. Link a new page from its category index and directly affected reader routes. Update a decision diagram only when the choice changes, and keep one canonical comparison or result table.
+7. Run relevant validation, review the diff for lost source URLs, and confirm that each new page is reachable from this index. Review scope, maturity, and duplicate claims manually; the checker cannot establish factual truth or editorial ownership.
+
+Category indexes and these conventions are the ingestion contract. Extend them only when a recurring ambiguity appears.
 
 ## Page Conventions
 

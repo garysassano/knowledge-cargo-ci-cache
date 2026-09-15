@@ -7,5 +7,6 @@ This section owns proposed designs, untested experiments, implementation depende
 | [RunsOn sccache research](runs-on-sccache/README.md)            | Routes action lifecycle, direct S3 tuning, trust, gateway, sticky storage, alternative backend, and validation questions. |
 | [Performance roadmap](runs-on-sccache/roadmap.md)               | Prioritized experiment sequence with completion tests and work-package boundaries.                                        |
 | [Cargo freshness alternatives](cargo-freshness-alternatives.md) | Nightly content fingerprints, related unstable features, stable-feature distinctions, and qualification criteria.         |
+| [Mr. Boxington object restore](mr-boxington-object-restore.md)  | Nested-archive measurements, directory-import prototype, layered-store options, and qualification plan.                   |
 
 Untested tools such as [Kache](../tools/kache.md) have tool profiles and participate in the [compiler-cache comparison](../tools/compiler-caches.md). Commercial/closed-provider and other-platform articles remain in [Providers](../providers/README.md), even where their exact implementation is outside the [direct GitHub Actions scope](../README.md#scope-and-applicability). Keep source discovery separate from proposed implementation work.

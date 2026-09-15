@@ -58,11 +58,50 @@ This indicates that the containerized Cargo registry path was not represented by
 
 The cache-store mount itself required care. Mounting the host path returned by `mbx cache dir` directly at the container cache root created a nested `actions/actions` store. The working layout mounted `dirname "$(mbx cache dir)"` at `$HOME/.cache/mbx` in the container.
 
-## Source follow-up
+## Source follow-up and corrected retest
 
-The [public path-mapping report](https://github.com/jdx/mr-boxington/discussions/258) identifies a Cargo registry child symlink whose canonical destination lies outside the canonical `CARGO_HOME` mapping root. The [v1.3.2 normalization implementation](https://github.com/jdx/mr-boxington/blob/v1.3.2/crates/mbx-cache-core/src/path_mapping.rs) supports that explanation. The [maintainer response](https://github.com/jdx/mr-boxington/discussions/258#discussioncomment-18240056) confirms the analysis, says 1.3.2 did not change it, and recommends mounting the registry directly at `$CARGO_HOME/registry`. [PR #259](https://github.com/jdx/mr-boxington/pull/259) merged on 2026-09-01 and adds a dedicated `cargo_registry` mapping. That mapping is present in [v1.9.0 rustc setup](https://github.com/jdx/mr-boxington/blob/v1.9.0/crates/mbx/src/rustc.rs). This archive has not repeated the benchmark with the fix or direct mount.
+The [public path-mapping report](https://github.com/jdx/mr-boxington/discussions/258) identifies a Cargo registry child symlink whose canonical destination lies outside the canonical `CARGO_HOME` mapping root. The [maintainer response](https://github.com/jdx/mr-boxington/discussions/258#discussioncomment-18240056) confirms the analysis, and [PR #259](https://github.com/jdx/mr-boxington/pull/259) merged on 2026-09-01 with a dedicated `cargo_registry` mapping.
 
-Source refresh on 2026-09-06 found mbx 1.9.0 and action v1.3.0, whose default GitHub payload is now `target`. These releases have not been retested here. Use [the approach's version boundary](../tools/mr-boxington.md#version-and-backend-boundary) and [integration diagnostics](../operations/diagnosing-compiler-cache-integration.md) when reproducing the object-cache experiment.
+On 2026-09-15, the fresh-runner comparison was repeated with mbx 1.11.1 and `jdx/mr-boxington-action@v1`, resolving to action 1.3.1. The corrected integration produced reusable object-mode results, so it supersedes the old path-mapping limitation as the current-version performance observation while preserving the older trial as historical evidence.
+
+Each cold and warm value below is one fresh-runner job. The workload used the same source revision, Rust 1.98.1, Linux x86-64 16-vCPU runner class, Docker builder, dependency-fetch step, eight Cargo jobs, disabled incremental compilation, and fixed multi-package Clippy-and-nextest checks. Cache namespaces were isolated, and warm mbx jobs required exact action-cache hits.
+
+| Strategy            |  Cold job | Cold native checks |  Warm job | Warm native checks |
+| ------------------- | --------: | -----------------: | --------: | -----------------: |
+| RunsOn S3 `sccache` |     4m06s |              2m28s |     3m03s |              1m24s |
+| mbx target mode     |     4m01s |              2m16s | **2m36s** |            **46s** |
+| mbx object mode     | **3m54s** |          **2m12s** |     3m10s |              1m20s |
+
+Warm cache evidence:
+
+- `sccache`: 1,498 Rust hits, 1 Rust miss, and a 99.85% Rust hit rate. Clippy took 18.13 seconds and the nextest build took 18.75 seconds.
+- mbx object mode: 449 Clippy hits and 322 nextest hits, totaling 771 hits with zero misses. Clippy took 15.45 seconds and the nextest build took 17.74 seconds.
+- mbx object mode restored 4,914 objects and 773 actions. Its action store was 3.0 GiB logical, transported as an approximately 625 MiB GitHub cache entry.
+
+The hit counters are not equivalent units. The command durations show that mbx object mode completed the Cargo work about four seconds faster than sccache, but it finished seven seconds slower at the complete-job level.
+
+### Object-mode restore timeline
+
+The GitHub cache restored an approximately 625 MiB zstd-compressed entry in about 3.02 seconds. Its payload was an uncompressed 3.0 GiB mbx tar. `mbx cache import` then spent 6.33 seconds unpacking, validating, and adopting the selected closure. Combined outer restore and inner import cost approximately 9.35 seconds.
+
+```text
+GitHub cache zstd/tar
+  -> mbx export tar
+     -> CAS objects and action results
+```
+
+The tested 1.11.1 importer already contains the merged [redundant-copy/hash optimization](https://github.com/jdx/mr-boxington/pull/353). It validates the closure, carries that proof forward, and adopts verified files by rename where possible. On the measured runner, staging and the destination store were on the same filesystem; the remaining cost was not explained by cross-filesystem copies. See [object-mode restore research](../research/mr-boxington-object-restore.md) for the isolated directory-import experiment and unimplemented options.
+
+### Workspace-state experiment
+
+mbx 1.8.0 added portable Cargo workspace-state attachments to object exports. The normal container benchmark did not export that state because builds recorded `/workspace` inside Docker while the action post step ran on the host. A diagnostic host mapping made capture and restore activate:
+
+```text
+exported 773 actions and 4,916 objects (4.3 GiB)
+restored Cargo workspace state (1,289 referenced files, 3.0 GiB)
+```
+
+The following container build failed because host-side target restoration and container-side target management disagreed at `/workspace/target`. The payload grew from 625 MiB compressed and 3.0 GiB logical to 877 MiB compressed and 4.3 GiB logical; import grew to approximately 21.9 seconds. Complete workspace-state restoration is therefore not a performance improvement for this container layout without explicit host/container path semantics and more selective state handling.
 
 ## Record interpretation
 
@@ -71,20 +110,21 @@ Source refresh on 2026-09-06 found mbx 1.9.0 and action v1.3.0, whose default Gi
 ## Interpretation
 
 - The same-job experiment shows that `mr-boxington` can be competitive with `sccache` when its local results are reusable.
-- The fresh-runner experiment shows that a successful exact action-cache restore is not sufficient evidence of useful compiler reuse.
-- In this containerized workload, S3 `sccache` delivered the stronger warm end-to-end result because nearly all Rust requests hit, while `mr-boxington` was constrained by unstable absolute Cargo-registry paths.
+- The original fresh-runner experiment shows that a successful exact action-cache restore is not sufficient evidence of useful compiler reuse.
+- The corrected mbx 1.11.1 experiment shows that object mode can make the Cargo phase slightly faster than sccache while losing end to end on eager restore/import overhead.
+- Target mode produced the strongest result, but it restores Cargo target state and has different compatibility boundaries from clean-target object caching.
 - The 12-second cold advantage for `mr-boxington` is directional and smaller than the 37-second warm advantage for `sccache`.
 - Cache hit or restore status must be interpreted alongside end-to-end wall time and tool-specific rejection or miss diagnostics.
 
 ## Limitations
 
-- Each cross-run strategy and cache state has one measured run, so the differences are directional rather than stable medians.
+- Each cross-run strategy and cache state in both fresh-runner comparisons has one measured run, so the differences are directional rather than stable medians.
 - The two strategies use different cache models and expose different statistics; object counts are not directly comparable with compiler-request hit counts.
-- The `mr-boxington` result measures the tested container integration, including its unresolved stable-path limitation, rather than the best performance the tool might achieve with a supported path mapping.
+- The historical mbx 1.3.0 result includes its stable-path limitation; the 1.11.1 retest corrected that integration.
 - The workload ran Cargo inside Docker. Native host builds may behave differently.
 - The workload is one anonymized Rust monorepo and should not be treated as a universal performance ranking.
-- The same-job and cross-run experiments used different `mr-boxington` versions and workload shapes and should not be combined into one timing series.
+- The same-job, original cross-run, and corrected cross-run experiments used different `mr-boxington` versions or workload shapes and should not be combined into one timing series.
 
 ## Implications
 
-Keep S3-backed `sccache` as the stronger measured option for this clean-target, fresh-runner workload. Re-evaluate `mr-boxington` using the upstream registry-mapping fix or maintainer-recommended direct mount, then repeat independent cold and warm runs with the same controls. The historical timings do not quantify the corrected integration.
+Keep S3-backed `sccache` as the stronger measured portable clean-target option for this fresh-runner workload. Treat mbx target mode as a separate, faster mechanism when target-tree restoration is compatible. Re-evaluate object mode if upstream reduces nested archive import, eager closure validation, or container workspace-state overhead, and repeat paired trials before changing the decision.

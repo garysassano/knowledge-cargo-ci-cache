@@ -4,7 +4,7 @@ A growing knowledge base for LLMs and maintainers researching Rust/Cargo CI cach
 
 ## Current Answer
 
-For most RunsOn Rust projects, start with mise, Magic Cache, input-only `Swatinem/rust-cache`, and a clean local `target/`. Keep no Rust cache as the control and remove the input cache when measurement shows no material benefit. For changing pull-request workloads whose compile time remains material, the leading measured compiler-output candidate is a clean target with S3-backed `sccache` in default server mode, subject to a representative end-to-end canary.
+For most RunsOn Rust projects, start with mise, Magic Cache, input-only `Swatinem/rust-cache`, and a clean local `target/`. Keep no Rust cache as the control and remove the input cache when measurement shows no material benefit. For changing pull-request workloads whose compile time remains material, the leading measured portable compiler-output candidate is a clean target with S3-backed `sccache` in default server mode. A corrected mbx 1.11.1 retest kept sccache ahead of object mode end to end; mbx target mode was faster but restores Cargo target state and is a separate experiment.
 
 Whole-target archives and native filesystem persistence are situation-specific options. RunsOn now offers managed EBS sticky disks; the custom snapshot action remains archived evidence. The canonical record is [Decisions](docs/decisions/README.md), and the platform mapping is [RunsOn Deployment Map](docs/deployments/runs-on/README.md).
 

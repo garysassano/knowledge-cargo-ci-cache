@@ -14,6 +14,13 @@ When a decision in [`docs/decisions/README.md`](README.md) changes, append an en
 
 ## Entries
 
+### D9 — Mr. Boxington after corrected current-version retest
+
+- Changed: 2026-09-15
+- Prior conclusion: Keep Mr. Boxington experimental because its same-job reuse was competitive, but the only fresh-runner Docker trial was limited by Cargo-registry path mapping; mbx 1.9.0 and explicit target/object payload modes still required a corrected retest.
+- New conclusion: Keep S3-backed `sccache` for portable clean-target reuse in the measured workload. The corrected mbx 1.11.1 object-mode run restored reusable results and made the Cargo phase slightly faster, but nested archive restore/import left it seven seconds slower overall. Keep mbx target mode separate and experimental; it was substantially faster but restores Cargo target state instead of providing the same clean-target mechanism.
+- Reason: The September 15 fresh-runner comparison measured sccache at 3m03s warm, mbx object mode at 3m10s, and mbx target mode at 2m36s. Object import alone took 6.33 seconds for 4,914 objects and 773 actions. See [Mr. Boxington evidence](../evidence/mr-boxington-vs-sccache.md#source-follow-up-and-corrected-retest) and [object-restore research](../research/mr-boxington-object-restore.md).
+
 ### D1 — Default Cargo cache approach
 
 - Changed: 2026-08-20

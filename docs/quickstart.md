@@ -12,7 +12,7 @@ For GitHub Actions Rust builds, start with:
 - `CARGO_INCREMENTAL=0` for a later `sccache` comparison.
 - `mise-action` when repeated Rust, Zig, or helper-tool setup is material.
 
-This shape is low-risk because it keeps tool setup and dependency downloads reusable without persisting mutable target state. Prefer no Rust cache when input-only setup is effectively tied with normal dependency downloads. For frequently changing PR workloads, canary S3-backed `sccache` in default server mode without a separate Cargo-input archive by default; add that archive only when dependency-download timing justifies it. The canonical decision record is [Decisions](decisions/README.md).
+This shape is low-risk because it keeps tool setup and dependency downloads reusable without persisting mutable target state. Prefer no Rust cache when input-only setup is effectively tied with normal dependency downloads. For frequently changing PR workloads, canary S3-backed `sccache` in default server mode without a separate Cargo-input archive by default; add that archive only when dependency-download timing justifies it. The corrected mbx 1.11.1 comparison kept sccache ahead of portable object mode end to end, while mbx target mode was faster through a different target-state mechanism. The canonical decision record is [Decisions](decisions/README.md).
 
 ## Copy The Right Shape
 

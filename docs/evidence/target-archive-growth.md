@@ -24,27 +24,27 @@ A new cache lineage began at about 206 MB compressed. Broad fallback restores th
 
 Selected progression:
 
-| Stage | Compressed target-cache object |
-| --- | ---: |
-| New lineage | 206 MB |
-| First large partial-restore save | 2.86 GB |
-| Next partial-restore save | 4.15 GB |
-| Later partial-restore save | 8.88 GB |
-| Later partial-restore save | 12.79 GB |
-| Under five days after the new lineage began | 13.89 GB |
-| Later observation | 17.82 GB |
+| Stage                                       | Compressed target-cache object |
+| ------------------------------------------- | -----------------------------: |
+| New lineage                                 |                         206 MB |
+| First large partial-restore save            |                        2.86 GB |
+| Next partial-restore save                   |                        4.15 GB |
+| Later partial-restore save                  |                        8.88 GB |
+| Later partial-restore save                  |                       12.79 GB |
+| Under five days after the new lineage began |                       13.89 GB |
+| Later observation                           |                       17.82 GB |
 
 The 206 MB to 13.89 GB change was a 67.36-fold increase. Growth was bursty around partial restores rather than a stable daily rate.
 
 ### Representative Degraded Job
 
-| Work | Duration | Share or interpretation |
-| --- | ---: | --- |
-| Target-cache restore | 236s | Mostly local extraction |
-| Build and test | 230s | The useful workload |
-| Target-cache post/save | 358s | Mostly compression/archive creation |
-| Total cache handling | 594s | 65.8% of a 903s job |
-| Cache handling divided by build time | 2.58× | Cache work cost more than twice the build |
+| Work                                 | Duration | Share or interpretation                   |
+| ------------------------------------ | -------: | ----------------------------------------- |
+| Target-cache restore                 |     236s | Mostly local extraction                   |
+| Build and test                       |     230s | The useful workload                       |
+| Target-cache post/save               |     358s | Mostly compression/archive creation       |
+| Total cache handling                 |     594s | 65.8% of a 903s job                       |
+| Cache handling divided by build time |    2.58× | Cache work cost more than twice the build |
 
 The restored object was about 13.8 GB compressed. Lookup and download took about 39.5 seconds, while local extraction took about 196.2 seconds. During save, compression and archive creation took about 325 seconds, while upload took about 28 seconds.
 
@@ -60,12 +60,12 @@ Restricting target-cache writes to one trusted canonical job avoids this redunda
 
 Queue delay remained around 24 seconds, so runner congestion did not explain the change.
 
-| Production window | Median | p90 | Population |
-| --- | ---: | ---: | --- |
-| Earlier compact-cache baseline | 7.2m | 10.7m | All successful PR runs |
-| Later pre-change baseline | 8.5m | 13.0m | All successful PR runs |
-| After disabling target caching | 13.1m | 22.9m | All successful PR runs |
-| After disabling target caching | 20.1m | 22.9m | Substantive runs lasting at least five minutes |
+| Production window              | Median |   p90 | Population                                     |
+| ------------------------------ | -----: | ----: | ---------------------------------------------- |
+| Earlier compact-cache baseline |   7.2m | 10.7m | All successful PR runs                         |
+| Later pre-change baseline      |   8.5m | 13.0m | All successful PR runs                         |
+| After disabling target caching |  13.1m | 22.9m | All successful PR runs                         |
+| After disabling target caching |  20.1m | 22.9m | Substantive runs lasting at least five minutes |
 
 The post-change all-run median is diluted by lightweight or no-op jobs. The substantive-run filter better represents jobs that perform the full Rust workload.
 
@@ -90,6 +90,13 @@ As checked on August 20, 2026, `Swatinem/rust-cache@v2` resolves to release v2.9
 The change makes the existing one-week age sweep inspect every immediate directory entry after a partial restore instead of stopping after the first entry. It does not add a byte limit, generation-aware deduplication, LRU policy, fingerprint validation, or recursive pruning of every nested Cargo artifact generation.
 
 The observed 206 MB to 13.89 GB growth happened in less than one week, so even the corrected age sweep would not have bounded this incident.
+
+## Applicability To Mr. Boxington Target Mode
+
+The measured 17.82 GB lineage used `Swatinem/rust-cache`; it is not a direct measurement of Mr. Boxington target mode. The current `jdx/mr-boxington-action` target cleanup is nevertheless relevant to the same risk assessment. It removes final products and package entries absent from current Cargo metadata, but retains every hash variant whose name matches a package or target still present in the graph. It has no byte cap, generation-aware deduplication, or age sweep.
+
+That implementation is an improvement over saving an untouched target tree, but it does not establish bounded size under repeated source, feature, profile, build-script, or dependency changes. A restored target can accumulate new hash variants and be saved into the next immutable cache entry. Treat recurrence of the production failure as a plausible inference until a multi-generation changed-source soak test measures archive size, file count, restore time, and save time. Do not transfer the exact 17.82 GB outcome to MBX as if it had already been observed there.
+
 ## Interpretation
 
 - Whole-target caching was beneficial while its archive was compact and consistent.
@@ -112,3 +119,4 @@ The observed 206 MB to 13.89 GB growth happened in less than one week, so even t
 - Do not add a broad target `restore-keys` fallback that can copy an older mutable target tree into each new immutable object.
 - Restrict target-cache writes to one trusted canonical job so concurrent savers do not repeat the most expensive work.
 - Use [Clean Target: No Cache Or Cargo Inputs Only](../approaches/clean-target.md) as the containment baseline, then compare strategies with [Cache Strategy Benchmarks](cache-strategy-benchmarks.md).
+- Apply the same qualification to other target-archive actions, including MBX target mode, unless their pruning is demonstrated to bound historical variants under the actual workload.

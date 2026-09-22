@@ -90,7 +90,50 @@ GitHub cache zstd/tar
      -> CAS objects and action results
 ```
 
-The tested 1.11.1 importer already contains the merged [redundant-copy/hash optimization](https://github.com/jdx/mr-boxington/pull/353). It validates the closure, carries that proof forward, and adopts verified files by rename where possible. On the measured runner, staging and the destination store were on the same filesystem; the remaining cost was not explained by cross-filesystem copies. See [object-mode restore research](../research/mr-boxington-object-restore.md) for the isolated directory-import experiment and unimplemented options.
+The tested 1.11.1 importer already contains the merged [redundant-copy/hash optimization](https://github.com/jdx/mr-boxington/pull/353). It validates the closure, carries that proof forward, and adopts verified files by rename where possible. On the measured runner, staging and the destination store were on the same filesystem; the remaining cost was not explained by cross-filesystem copies. See [object-mode restore history](../research/mr-boxington-object-restore.md) for the isolated prototype, released directory transport, and remaining research options.
+
+## Controlled action 1.3.1 versus 1.4.0 comparison
+
+On 2026-09-16, a new cold/warm pair ran five concurrent arms in each workflow: S3-backed `sccache`, mbx object mode with action 1.3.1, mbx object mode with action 1.4.0, mbx target mode with action 1.3.1, and mbx target mode with action 1.4.0. Both action versions used mbx 1.12.0, so the object-mode comparison isolates the action transport change from the engine version. The current `@v1` reference resolved to action 1.4.0 commit `867fc530`.
+
+Every arm used the same source revision, Rust 1.98.1, Linux x86-64 16-vCPU runner class, Docker builder, dependency-fetch step, eight Cargo jobs, disabled incremental compilation, and fixed three-package Clippy-and-nextest workload. Cold jobs used isolated empty namespaces; warm jobs required exact hits against their corresponding cold outputs. Each cell is one fresh-runner job.
+
+| Strategy            | mbx    | Action |  Cold job | Cold native checks |  Warm job | Warm native checks | Warm import |
+| ------------------- | ------ | ------ | --------: | -----------------: | --------: | -----------------: | ----------: |
+| RunsOn S3 `sccache` | —      | 0.17.0 |     4m04s |              2m25s |     3m08s |              1m28s |           — |
+| mbx objects         | 1.12.0 | 1.3.1  |     4m02s |              2m12s |     3m16s |              1m22s |       5.97s |
+| mbx objects         | 1.12.0 | 1.4.0  | **3m50s** |          **2m12s** | **3m01s** |          **1m19s** |   **0.26s** |
+| mbx target          | 1.12.0 | 1.3.1  |     3m58s |              2m13s | **2m41s** |            **48s** |           — |
+| mbx target          | 1.12.0 | 1.4.0  |     4m00s |              2m18s | **2m41s** |                49s |           — |
+
+Both object-mode warm jobs restored 773 actions and 4,914 objects, representing 3.0 GiB logically and approximately 625–626 MiB in the GitHub cache. Both reported 449 Clippy hits and 322 nextest hits with zero misses. The action 1.3.1 arm restored a tar and imported it in 5.97 seconds. The action 1.4.0 arm restored a directory bundle and imported it in 0.26 seconds.
+
+Action 1.4.0 object mode finished 15 seconds ahead of action 1.3.1 and seven seconds ahead of sccache at the complete-job level. Its native-check step was three seconds faster than action 1.3.1 and nine seconds faster than sccache. The target-mode results were effectively unchanged between action versions, which is expected because action 1.4.0 changes object transport rather than target payload behavior.
+
+The cold workflow is useful as a same-batch population check, but each arm remains a single observation. The controlled warm result provides the strongest current evidence because it holds the mbx version and surrounding workflow constant while changing the action transport. Sanitized records are preserved in [the controlled action comparison data](data/mr-boxington-action-transport.jsonl).
+
+## Action object transport versus native S3
+
+On 2026-09-16, a separate two-arm cold/warm experiment compared mbx 1.12.0 through action 1.4.0 object mode with the same MBX client using its native S3 remote. Both arms ran concurrently from the same source revision on the same c8a 16-vCPU runner class, with eight Cargo jobs, disabled incremental compilation, the same Docker build environment, and the same three-package Clippy-and-nextest workload. The cold pair used fresh isolated namespaces; the warm pair immediately reused those namespaces.
+
+| Phase                |                    Action 1.4.0 objects |                                          Native S3 |
+| -------------------- | --------------------------------------: | -------------------------------------------------: |
+| Cold job             |                                   3m53s |                                              3m53s |
+| Cold native checks   |                                   2m14s |                                              2m16s |
+| Cold Clippy          |                                  35.05s |                                             35.89s |
+| Cold nextest build   |                                  50.95s |                                             51.83s |
+| Warm job             |                               **3m01s** |                                              3m06s |
+| Warm native checks   |                               **1m21s** |                                              1m29s |
+| Warm Clippy          |                              **16.34s** |                                             21.99s |
+| Warm nextest build   |                              **17.47s** |                                             17.65s |
+| Warm hits            |                               449 + 322 |                                          449 + 322 |
+| Warm remote transfer | 626 MB compressed archive restored once | 3.0 GiB during Clippy, then 1.5 KiB during nextest |
+
+The cold jobs were effectively tied. Native S3 uploaded 822.3 MiB during Clippy and 2.2 GiB during nextest, approximately 3.0 GiB of logical objects. The action saved the equivalent 773-action, 4,914-object closure through the Actions cache. Its warm restore transferred 655,928,082 bytes, then imported the 3.0 GiB logical directory closure.
+
+The native-S3 warm Clippy command reported 449 hits, zero misses, 413 prefetched objects, and 3.0 GiB downloaded. Nextest reported 322 hits, zero misses, and only 1.5 KiB downloaded because the Clippy prefetch had already populated the local store. The action arm had the same hit counts and served them from the restored local closure.
+
+This establishes that direct S3 worked correctly with exported RunsOn instance-role credentials, but it did not improve this workload: action object mode was five seconds faster for the job and eight seconds faster for the native-check step. The comparison does not measure the existing `mr-boxington-cache` server, whose protocol adds compression, packs, batched lookup, and action promises. Sanitized records are in [the remote-backend data](data/mr-boxington-remote-backends.jsonl).
 
 ### Workspace-state experiment
 
@@ -111,20 +154,23 @@ The following container build failed because host-side target restoration and co
 
 - The same-job experiment shows that `mr-boxington` can be competitive with `sccache` when its local results are reusable.
 - The original fresh-runner experiment shows that a successful exact action-cache restore is not sufficient evidence of useful compiler reuse.
-- The corrected mbx 1.11.1 experiment shows that object mode can make the Cargo phase slightly faster than sccache while losing end to end on eager restore/import overhead.
+- The corrected mbx 1.11.1 experiment showed that object mode could make the Cargo phase slightly faster than sccache while losing end to end on eager tar restore/import overhead.
+- The controlled mbx 1.12.0 experiment shows that action 1.4.0's directory transport removes that measured disadvantage: object mode finished seven seconds ahead of sccache and fifteen seconds ahead of action 1.3.1 in the same warm batch.
 - Target mode produced the strongest result, but it restores Cargo target state and has different compatibility boundaries from clean-target object caching.
+- The same-batch remote comparison found action object mode faster than native S3 for this workload; native S3's 3.0 GiB warm Clippy download was substantially larger than the 626 MB compressed action archive.
 - The 12-second cold advantage for `mr-boxington` is directional and smaller than the 37-second warm advantage for `sccache`.
 - Cache hit or restore status must be interpreted alongside end-to-end wall time and tool-specific rejection or miss diagnostics.
 
 ## Limitations
 
-- Each cross-run strategy and cache state in both fresh-runner comparisons has one measured run, so the differences are directional rather than stable medians.
+- Each strategy and cache state has one measured run, so the differences are directional rather than stable medians. The controlled action comparison reduces cross-batch noise but does not replace repeated trials.
 - The two strategies use different cache models and expose different statistics; object counts are not directly comparable with compiler-request hit counts.
 - The historical mbx 1.3.0 result includes its stable-path limitation; the 1.11.1 retest corrected that integration.
 - The workload ran Cargo inside Docker. Native host builds may behave differently.
 - The workload is one anonymized Rust monorepo and should not be treated as a universal performance ranking.
-- The same-job, original cross-run, and corrected cross-run experiments used different `mr-boxington` versions or workload shapes and should not be combined into one timing series.
+- The same-job, original cross-run, corrected 1.11.1, and controlled 1.12.0 experiments used different versions or workload shapes unless explicitly stated and should not be combined into one timing series.
+- The native-S3 comparison used temporary credentials exported from the RunsOn instance role and passed into a trusted build container. It did not test repository-enforced IAM isolation or the MBX cache server.
 
 ## Implications
 
-Keep S3-backed `sccache` as the stronger measured portable clean-target option for this fresh-runner workload. Treat mbx target mode as a separate, faster mechanism when target-tree restoration is compatible. Re-evaluate object mode if upstream reduces nested archive import, eager closure validation, or container workspace-state overhead, and repeat paired trials before changing the decision.
+Canary mbx object mode with mbx 1.12.0 and action 1.4.0 or newer alongside S3-backed `sccache` for portable clean-target reuse. The controlled workload favored action object mode over both sccache and native MBX S3, while earlier tar-based action versions did not. Treat target mode as a narrow target-state mechanism requiring multi-generation growth qualification. Treat `mr-boxington-cache` as an unmeasured server candidate rather than inferring its performance from direct S3.

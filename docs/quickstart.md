@@ -12,7 +12,7 @@ For GitHub Actions Rust builds, start with:
 - `CARGO_INCREMENTAL=0` for a later `sccache` comparison.
 - `mise-action` when repeated Rust, Zig, or helper-tool setup is material.
 
-This shape is low-risk because it keeps tool setup and dependency downloads reusable without persisting mutable target state. Prefer no Rust cache when input-only setup is effectively tied with normal dependency downloads. For frequently changing PR workloads, canary S3-backed `sccache` in default server mode without a separate Cargo-input archive by default; add that archive only when dependency-download timing justifies it. The corrected mbx 1.11.1 comparison kept sccache ahead of portable object mode end to end, while mbx target mode was faster through a different target-state mechanism. The canonical decision record is [Decisions](decisions/README.md).
+This shape is low-risk because it keeps tool setup and dependency downloads reusable without persisting mutable target state. Prefer no Rust cache when input-only setup is effectively tied with normal dependency downloads. For frequently changing PR workloads, canary S3-backed `sccache` and Mr. Boxington object mode with mbx 1.12.0 or newer and action 1.4.0 or newer. In the controlled measurement here, directory-backed object mode finished seven seconds ahead of sccache. Add a separate Cargo-input archive only when dependency-download timing justifies it. Mr. Boxington target mode was faster in an immediate exact-warm pair, but its current package-name pruning is not size-bounded or generation-aware; it remains a narrow stable-workload option until changed-source soak testing rules out the target growth seen in production. The canonical decision record is [Decisions](decisions/README.md).
 
 ## Copy The Right Shape
 
@@ -38,4 +38,4 @@ Cargo can skip compilation only when source inputs, source mtimes, workspace pat
 
 The short explanation is [Cargo Freshness Model](concepts/cargo-freshness-model.md). The detailed signal table is [Cargo Freshness Signals](reference/cargo-freshness-signals.md).
 
-For other compiler wrappers, see the [experimental Mr. Boxington approach](tools/mr-boxington.md) and [untested Kache entry](reference/vendor-ci-cache-sources.md#kache-not-tested). Provider documentation and blog posts live in the [ecosystem catalog](reference/vendor-ci-cache-sources.md); proposed RunsOn improvements live under [Research](research/README.md).
+For other compiler wrappers, see the [qualified Mr. Boxington approach](tools/mr-boxington.md) and [untested Kache entry](reference/vendor-ci-cache-sources.md#kache-not-tested). Provider documentation and blog posts live in the [ecosystem catalog](reference/vendor-ci-cache-sources.md); proposed RunsOn improvements live under [Research](research/README.md).

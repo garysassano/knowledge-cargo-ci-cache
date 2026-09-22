@@ -45,4 +45,6 @@ Use the [sticky deployment section](../deployments/runs-on/README.md#sticky-disk
 
 The archive has [direct-S3 compiler-cache measurements](../evidence/cache-strategy-benchmarks.md) and [custom-snapshot evidence](../evidence/rust-cache-vs-snapshot.md). Neither qualifies managed sticky target performance. The existing [sticky Cargo canary](../research/runs-on-sccache/sticky-cargo-canary.yml) remains a research design. Official capability pages serve as the primary source collection here; a provider blog is not required to establish a documented feature.
 
+RunsOn currently documents and implements `sccache: s3`; no released `mbx: s3` or `mbx: server` action input was found in v2.3.1. Proposed MBX integration should distinguish direct S3 from deployment of the existing experimental `jdx/mr-boxington-cache` server. The server is the stronger isolation and protocol proposal, but it has not been deployed or benchmarked in this archive. See [Mr. Boxington remote backends](../research/mr-boxington-remote-backends.md).
+
 The [upstream contribution map](../reference/runson-cache-and-disk-details.md#proposed-upstream-fixes) tracks pending prefix, BuildKit compatibility, network diagnostics, and legacy snapshot work without treating open PRs as released capabilities.

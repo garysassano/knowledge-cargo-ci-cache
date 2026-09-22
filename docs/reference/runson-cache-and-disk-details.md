@@ -191,12 +191,14 @@ These contributions were open at the September 6, 2026 review. They are source p
 
 ## Trust Boundaries
 
-| Data path             | Workflow setting                                                       | Infrastructure control still required                                                                   |
-| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Magic Cache archive   | Cache key, branch save condition, optional protocol isolation          | Separate stack/role for genuinely untrusted code; backend lifecycle and encryption                      |
-| Direct S3 `sccache`   | Repository-specific prefix and optional `SCCACHE_S3_RW_MODE=READ_ONLY` | IAM-enforced read-only readers and trusted writers; dedicated bucket or prefix policy where appropriate |
-| Sticky disk           | Separate lineage names and workflow concurrency                        | Runner/repository trust boundary, encrypted EBS, snapshot permissions, and retention                    |
-| Archived EBS snapshot | Workflow save policy and credential scrub step                         | Least-privilege EC2/EBS role, encryption, retention, and deletion controls                              |
+| Data path             | Workflow setting                                                             | Infrastructure control still required                                                                   |
+| --------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Magic Cache archive   | Cache key, branch save condition, optional protocol isolation                | Separate stack/role for genuinely untrusted code; backend lifecycle and encryption                      |
+| Direct S3 `sccache`   | Repository-specific prefix and optional `SCCACHE_S3_RW_MODE=READ_ONLY`       | IAM-enforced read-only readers and trusted writers; dedicated bucket or prefix policy where appropriate |
+| Direct S3 MBX         | Repository-specific `MBX_REMOTE_NAMESPACE` and client-side `MBX_REMOTE_MODE` | IAM-enforced scope; exported instance-role credentials remain available to workflow code                |
+| Managed MBX server    | OIDC audience, namespace, and requested mode                                 | Server-side claim grants, private endpoint, database/storage roles, lifecycle, and service operation    |
+| Sticky disk           | Separate lineage names and workflow concurrency                              | Runner/repository trust boundary, encrypted EBS, snapshot permissions, and retention                    |
+| Archived EBS snapshot | Workflow save policy and credential scrub step                               | Least-privilege EC2/EBS role, encryption, retention, and deletion controls                              |
 
 Never persist Cargo registry credentials, cloud credentials, or tokens in a save-capable archive or disk. If Cargo home is persistent, scrub `credentials`, `credentials.toml`, and any generated config containing secrets before the post step.
 
@@ -207,6 +209,8 @@ Never persist Cargo registry credentials, cloud credentials, or tokens in a save
 | Input-only archive    | Fixed cache setup can approach the dependency-download time it avoids                                            |
 | Whole-target archive  | Complete-tree extraction, metadata writes, cleanup, compression, and immutable-object growth                     |
 | Direct S3 `sccache`   | Cargo orchestration, many small object operations, non-cacheable calls, and linking                              |
+| Direct S3 MBX         | Raw per-object transfer, speculative prefetch volume, credentials, and S3 request count                          |
+| Managed MBX server    | Service/database operation, private networking, pack behavior, and unmeasured workload performance               |
 | Sticky Cargo inputs   | Snapshot restore/commit, wait time, and EBS cost                                                                 |
 | Sticky target         | Snapshot restore/commit, native target growth, inode pressure, source-mtime mismatches, and last-writer behavior |
 | Archived EBS snapshot | Attach/mount/snapshot lifecycle, custom cleanup, permissions, and snapshot storage                               |

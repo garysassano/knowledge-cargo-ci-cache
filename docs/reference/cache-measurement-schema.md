@@ -15,13 +15,13 @@ For detailed field types and the phase/metric vocabulary, use [Cache Measurement
 
 ## Record Types
 
-| `record_type` | Cardinality | Purpose |
-| --- | --- | --- |
-| `run` | Exactly one per `run_id` | Trial identity, sanitized runner/workload profile, top-level result, and authoritative `job_total_ms` wall time |
-| `phase` | Zero or more | A measured or derived time interval or aggregate duration |
-| `metric` | Zero or more | Size, file count, request count, hit/miss statistic, cost, or other scalar with `name`, `value`, and `unit` |
-| `resource_sample` | Zero or more | Timestamped CPU, memory, disk, network, and process-concurrency values |
-| `event` | Zero or more | Cache race, fallback, reset, timeout, failure, cancellation, or other discrete behavior |
+| `record_type`     | Cardinality              | Purpose                                                                                                         |
+| ----------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `run`             | Exactly one per `run_id` | Trial identity, sanitized runner/workload profile, top-level result, and authoritative `job_total_ms` wall time |
+| `phase`           | Zero or more             | A measured or derived time interval or aggregate duration                                                       |
+| `metric`          | Zero or more             | Size, file count, request count, hit/miss statistic, cost, or other scalar with `name`, `value`, and `unit`     |
+| `resource_sample` | Zero or more             | Timestamped CPU, memory, disk, network, and process-concurrency values                                          |
+| `event`           | Zero or more             | Cache race, fallback, reset, timeout, failure, cancellation, or other discrete behavior                         |
 
 Take field shapes from the committed data files rather than inventing new ones. Reuse the phase and metric names already present in those files, prefer specific names over combined ones (`cache_lookup` and `cache_download` over `cache_lookup_download` when the source data exposes the split), and document any genuinely new name in the evidence page that introduces it.
 
@@ -64,4 +64,6 @@ Keep raw logs in the private source system and export only the numeric or catego
 - [Sanitized degraded archive sample](../evidence/data/target-archive-degraded-sample.jsonl)
 - [Sanitized full-workload compiler-cache sample](../evidence/data/compiler-cache-full-workload-sample.jsonl)
 - [Sanitized Mr. Boxington and sccache cross-run sample](../evidence/data/mr-boxington-sccache-cross-run.jsonl)
+- [Sanitized controlled Mr. Boxington action transport sample](../evidence/data/mr-boxington-action-transport.jsonl)
+- [Sanitized Mr. Boxington remote-backend sample](../evidence/data/mr-boxington-remote-backends.jsonl)
 - [Measurement procedure and report tables](../operations/measuring-cache-performance.md)

@@ -65,4 +65,4 @@ The diagnostic workspace-state experiment expanded the payload from 625 MiB comp
 
 Repeat exact warm, small-edit, changed-checkout-path, changed-target-path, native-host, and bind-mounted-container scenarios. Instrument setup, cache download and extraction, manifest parsing, verification, publication, first-hit latency, Cargo duration, and complete job duration. Test corruption, cancellation, outage, concurrent readers and writers, cache growth, trust separation, and rollback before broad adoption.
 
-The current [decision D9](../decisions/README.md) qualifies mbx 1.12.0 with action 1.4.0 or newer as a portable clean-target canary alongside sccache. Target mode remains a separate mechanism because it restores Cargo target state.
+The current [decision D9](../decisions/README.md) qualifies mbx 1.15.0 with action 1.4.0 as a portable clean-target canary alongside sccache. Target mode remains a separate mechanism because it restores Cargo target state.

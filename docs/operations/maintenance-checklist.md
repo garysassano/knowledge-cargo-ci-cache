@@ -48,7 +48,7 @@ Use this checklist when refreshing the archive or copying its examples into a li
 ## Compiler wrappers and research
 
 - Keep named implementations and comparisons in [Tools](../tools/README.md), provider capabilities and blog posts in [Providers](../providers/README.md), and unstable features in [Research](../research/README.md). Preserve source URLs when reorganizing and label untested products explicitly. An open-source client and a hosted backend have separate applicability boundaries.
-- Record mbx binary, action version, and GitHub payload mode separately. The current action's `target` default is a different mechanism from `objects`; recheck these inputs before reproducing old compiler-object trials.
+- Record mbx binary, action version, and GitHub payload mode separately. The current action's `target` default is a different mechanism from `objects`; recheck these inputs before reproducing old compiler-object trials. For native remotes inside a container, also forward the real CI trust context used by MBX's effective write policy and keep IAM authorization separate.
 - Keep same-job reuse separate from fresh-runner restore/export, and do not infer compiler reuse from an exact archive hit.
 - Recheck the version of OpenDAL embedded in the tested sccache binary before carrying a fixed upstream limitation forward. Record changed release status in the [implementation reference](../reference/compiler-cache-implementation.md) and decision history.
 - Keep proposed inputs, drain APIs, gateways, readiness/index formats, and storage tiers under research until implemented and qualified. Numeric promotion budgets are proposals, not benchmark results.

@@ -112,6 +112,22 @@ Action 1.4.0 object mode finished 15 seconds ahead of action 1.3.1 and seven sec
 
 The cold workflow is useful as a same-batch population check, but each arm remains a single observation. The controlled warm result provides the strongest current evidence because it holds the mbx version and surrounding workflow constant while changing the action transport. Sanitized records are preserved in [the controlled action comparison data](data/mr-boxington-action-transport.jsonl).
 
+## Controlled mbx 1.12.0 versus 1.15.0 comparison
+
+On 2026-09-22, a controlled fresh-runner experiment compared S3-backed sccache 0.17.0 with mbx 1.12.0 and 1.15.0. Both MBX arms used action 1.4.0 with explicit GitHub object mode. Every arm used the same source revision, Rust 1.98.1, Linux x86-64 16-vCPU compute class, Docker builder, dependency-fetch phase, eight Cargo jobs, disabled incremental compilation, empty target directory, and three-package Clippy-and-nextest workload. One isolated cold cache was populated per arm, followed by three exact-warm baseline samples, one shared-dependency comment change, and one leaf-package comment change. The two MBX arms ran concurrently; sccache ran after one runner slot became available.
+
+| Strategy | Cache state | Samples | Median job wall | Median measured job | Median workload | Hits / misses / unconsulted | Archive bytes | Correctness |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| S3-backed sccache 0.17.0 | Exact warm | 3 | 196s | 184.42s | 93.93s | 1,529 / 1 / not applicable | not measured | Pass |
+| mbx 1.12.0 objects | Exact warm | 3 | 198s | 179.19s | 80.38s | 781 / 0 / 0 | 666,473,914 | Pass |
+| mbx 1.15.0 objects | Exact warm | 3 | 198s | 181.97s | 80.83s | 788 / 0 / 0 | 675,956,335 | Pass |
+
+The exact-warm workload median for 1.15.0 was 0.45 seconds slower than 1.12.0, while complete-job medians were equal at the available one-second timestamp precision. Version 1.15.0 restored seven additional actions and 43,628,044 additional output bytes. Its reports removed the six native-library bypasses that remained in 1.12.0 across Clippy and nextest. Both versions reported zero exact-warm misses, zero unconsulted actions, and zero remote failures.
+
+The shared-dependency change produced four misses in each MBX arm: 1.12.0 completed the measured job in 182.75 seconds with a 79.70-second workload, while 1.15.0 completed it in 183.03 seconds with an 81.61-second workload. The leaf comment change produced zero MBX misses: 1.12.0 completed the measured job in 182.85 seconds with an 80.01-second workload, while 1.15.0 completed it in 183.88 seconds with an 80.61-second workload. All changed-source jobs passed, and neither MBX version reported a remote failure.
+
+The 1.15.0 cold archive was 9,482,421 bytes, or about 1.4%, larger than the 1.12.0 archive. The result qualifies 1.15.0 for this portable object-mode canary because its performance was neutral within the observed variation and it expanded native-library coverage without correctness or remote-cache regressions. Sanitized records are preserved in [the mbx 1.15.0 object-mode data](data/mr-boxington-1.15-object-mode.jsonl).
+
 ## Action object transport versus native S3
 
 On 2026-09-16, a separate two-arm cold/warm experiment compared mbx 1.12.0 through action 1.4.0 object mode with the same MBX client using its native S3 remote. Both arms ran concurrently from the same source revision on the same c8a 16-vCPU runner class, with eight Cargo jobs, disabled incremental compilation, the same Docker build environment, and the same three-package Clippy-and-nextest workload. The cold pair used fresh isolated namespaces; the warm pair immediately reused those namespaces.
@@ -163,14 +179,16 @@ The following container build failed because host-side target restoration and co
 
 ## Limitations
 
-- Each strategy and cache state has one measured run, so the differences are directional rather than stable medians. The controlled action comparison reduces cross-batch noise but does not replace repeated trials.
+- The experiments before the mbx 1.15.0 qualification generally have one measured run per strategy and cache state, so those differences remain directional. The 1.15.0 comparison adds three exact-warm baseline samples but only one cold and one sample for each source-change shape.
 - The two strategies use different cache models and expose different statistics; object counts are not directly comparable with compiler-request hit counts.
 - The historical mbx 1.3.0 result includes its stable-path limitation; the 1.11.1 retest corrected that integration.
 - The workload ran Cargo inside Docker. Native host builds may behave differently.
 - The workload is one anonymized Rust monorepo and should not be treated as a universal performance ranking.
 - The same-job, original cross-run, corrected 1.11.1, and controlled 1.12.0 experiments used different versions or workload shapes unless explicitly stated and should not be combined into one timing series.
 - The native-S3 comparison used temporary credentials exported from the RunsOn instance role and passed into a trusted build container. It did not test repository-enforced IAM isolation or the MBX cache server.
+- The mbx 1.15.0 qualification has three exact-warm baseline samples but only one cold, shared-change, and leaf-change sample. It uses one containerized workload and one runner class; native host builds and other dependency graphs may behave differently.
+- The source-change cases used equivalent comment-only mutations against the current workload because the historical source revisions predated the measured container workload. Runner capacity serialized sccache after the paired MBX jobs.
 
 ## Implications
 
-Canary mbx object mode with mbx 1.12.0 and action 1.4.0 or newer alongside S3-backed `sccache` for portable clean-target reuse. The controlled workload favored action object mode over both sccache and native MBX S3, while earlier tar-based action versions did not. Treat target mode as a narrow target-state mechanism requiring multi-generation growth qualification. Treat `mr-boxington-cache` as an unmeasured server candidate rather than inferring its performance from direct S3.
+Canary mbx object mode with mbx 1.15.0 and action 1.4.0 alongside S3-backed `sccache` for portable clean-target reuse. Set the GitHub backend and object payload explicitly. The controlled workload found 1.15.0 neutral to 1.12.0 on repeated exact-warm timing while expanding native-library coverage, and both versions remained faster than sccache in the measured workload phase. Treat target mode as a narrow target-state mechanism requiring multi-generation growth qualification. Treat `mr-boxington-cache` as an unmeasured server candidate rather than inferring its performance from direct S3.

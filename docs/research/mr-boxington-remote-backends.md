@@ -1,6 +1,6 @@
 # Mr. Boxington remote backends on RunsOn
 
-**Status: direct S3 measured once; managed cache-server integration proposed and untested. Reviewed 2026-09-16.**
+**Status: direct S3 measured once; managed cache-server integration proposed and untested. Reviewed 2026-09-22.**
 
 This page separates MBX backend selection from the GitHub action payload modes. It records the current source contract, the RunsOn integration boundary, the direct-S3 experiment, and the remaining server proposal. It does not describe an existing RunsOn MBX feature.
 
@@ -23,7 +23,7 @@ RunsOn Magic Cache transparently backs the GitHub archive path, including both `
 
 ## Existing cache server
 
-The open-source `jdx/mr-boxington-cache` server is experimental. Its latest published release checked on 2026-09-16 was v0.1.1; the default branch declared version 0.2.0. It already provides:
+The open-source `jdx/mr-boxington-cache` server is experimental. Its latest published release checked on 2026-09-22 was v0.1.1; the default branch declared version 0.2.0. It already provides:
 
 - S3-backed blob storage using the standard AWS SDK credential chain, including EC2 roles.
 - GitHub OIDC authorization and namespace grants.
@@ -82,7 +82,7 @@ The direct `s3://` backend is intentionally simpler:
 - Normal operation does not require `s3:DeleteObject`; bucket lifecycle can expire data.
 - Task action manifests use conditional writes. `MBX_REMOTE_S3_CONDITIONAL_WRITES=required` can require backend support.
 
-On RunsOn, direct S3 currently requires exporting temporary instance-role credentials and passing them into any container that runs MBX. Masking them prevents routine log display but does not make them inaccessible to later job code. RunsOn documents repository and branch isolation for Magic Cache protocol credentials; direct S3 clients instead inherit the runner role broader stack cache authority. `MBX_REMOTE_MODE=read-only` is client behavior, not an IAM boundary.
+On RunsOn, direct S3 currently requires exporting temporary instance-role credentials and passing them into any container that runs MBX. The measured container also received `GITHUB_ACTIONS`, `GITHUB_EVENT_NAME`, `GITHUB_REF_TYPE`, and `GITHUB_REF_PROTECTED` because MBX uses those values to reduce untrusted contexts to read-only. Forward the real job values rather than hard-coding a trusted push in a reusable workflow. Missing CI context makes a configured read-write client effectively read-only, while forged trusted context can enable client writes; neither replaces repository-scoped IAM. Masking credentials prevents routine log display but does not make them inaccessible to later job code. RunsOn documents repository and branch isolation for Magic Cache protocol credentials; direct S3 clients instead inherit the runner role broader stack cache authority. `MBX_REMOTE_MODE=read-only` is client behavior, not an IAM boundary.
 
 An optional `mbx: s3` input in `runs-on/action` could automate URL, namespace, region, mode, and credential setup. It would be convenience for trusted stacks unless paired with repository-scoped IAM. It should not set `RUSTC_WRAPPER`, install MBX, or expose credentials as outputs; `jdx/mr-boxington-action` can continue to install and wrap Cargo.
 
@@ -128,8 +128,8 @@ For RunsOn:
 
 ## Sources
 
-- [Mr. Boxington remote cache](https://github.com/jdx/mr-boxington/blob/v1.12.0/docs/remote-cache.md)
-- [Mr. Boxington cache server](https://github.com/jdx/mr-boxington/blob/v1.12.0/docs/cache-server.md)
+- [Mr. Boxington remote cache](https://github.com/jdx/mr-boxington/blob/v1.15.0/docs/remote-cache.md)
+- [Mr. Boxington cache server](https://github.com/jdx/mr-boxington/blob/v1.15.0/docs/cache-server.md)
 - [`jdx/mr-boxington-cache`](https://github.com/jdx/mr-boxington-cache)
 - [Mr. Boxington action v1.4.0](https://github.com/jdx/mr-boxington-action/blob/v1.4.0/README.md)
 - [RunsOn caching](https://runs-on.com/docs/performance/caching/)

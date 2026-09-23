@@ -14,6 +14,13 @@ When a decision in [`docs/decisions/README.md`](README.md) changes, append an en
 
 ## Entries
 
+### D9 — Qualify mbx 1.15.0 for object mode
+
+- Changed: 2026-09-22
+- Prior conclusion: Canary mbx object mode with mbx 1.12.0 and action 1.4.0 or newer alongside sccache. Later mbx releases needed workload-specific qualification because releases 1.13.0 through 1.15.0 changed accounting and cache eligibility.
+- New conclusion: Use mbx 1.15.0 with action 1.4.0 and explicit GitHub object mode as the qualified portable MBX canary alongside sccache.
+- Reason: A controlled fresh-runner comparison used one isolated cold cache, three exact-warm baseline samples, one shared-dependency change, and one leaf-package change. The 1.15.0 exact-warm workload median was 80.83 seconds versus 80.38 seconds for 1.12.0 and 93.93 seconds for sccache. Version 1.15.0 restored seven additional actions, removed six native-library bypasses, and had no correctness or remote failures; its cold archive was about 1.4% larger. See [Mr. Boxington evidence](../evidence/mr-boxington-vs-sccache.md#controlled-mbx-1120-versus-1150-comparison).
+
 ### D9 — Target growth qualification and MBX remote backends
 
 - Changed: 2026-09-16

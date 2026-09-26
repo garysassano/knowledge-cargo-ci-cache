@@ -37,7 +37,7 @@ The [RunsOn public repository](https://github.com/runs-on/runs-on) identifies it
 
 ## Managed EBS persistence
 
-Sticky disks restore a compatible EBS snapshot into a per-job volume and publish a subsequent cleanly unmounted snapshot. The current docs position this as the replacement for the older `runs-on/snapshot@v1` approach. Built-in `rust`/`cargo` mode covers registry and Git dependency inputs; target persistence needs an explicit custom path. The built-in Git mirror speeds checkout transport and does not itself preserve the source worktree's mtimes. ([Sticky-disk documentation](https://runs-on.com/docs/runners/capabilities/sticky-disks/))
+Sticky disks restore a compatible EBS snapshot into a per-job volume and publish a subsequent cleanly unmounted snapshot. The current docs position this as the replacement for the older `runs-on/snapshot@v1` approach. Built-in `rust`/`cargo` mode covers registry and Git dependency inputs; target persistence needs an explicit custom path. The `git` (alias `checkout`) and `git-full` modes mirror GitHub repositories to speed up checkout transport; they do not preserve the source worktree's mtimes. ([Sticky-disk documentation](https://runs-on.com/docs/runners/capabilities/sticky-disks/), [v2.3.1 action README](https://github.com/runs-on/action/blob/v2.3.1/README.md#git-mode-fast-checkouts))
 
 Use the [sticky deployment section](../deployments/runs-on/README.md#sticky-disk-options) for configuration and the [versioned failure contract](../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary) for the documented/source discrepancy. Keep this managed option distinct from the archive's [custom EBS snapshot action](../approaches/ebs-snapshot.md).
 

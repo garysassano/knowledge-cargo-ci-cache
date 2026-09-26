@@ -11,6 +11,7 @@ This page maps the repository's cache approaches onto RunsOn. It owns RunsOn run
 | Evaluate a native MBX remote                                     | Existing `mr-boxington-cache` server or direct MBX S3; these are backend choices, not GitHub `objects                                                     | target` modes                                                                       | Server preferred for investigation; direct S3 measured slower once                                                                   | [MBX remote-backend research](../../research/mr-boxington-remote-backends.md) |
 | Persist Cargo registry and Git inputs without archives           | RunsOn sticky disk with built-in `rust` mode                                                                                                              | Test after RunsOn v3.2 upgrade                                                      | [Sticky-Disk Options](#sticky-disk-options)                                                                                          |
 | Preserve a native target filesystem                              | Sticky disk with built-in `rust` mode and a custom target path                                                                                            | Higher-complexity fallback experiment                                               | [Sticky-Disk Options](#sticky-disk-options)                                                                                          |
+| Speed up repeated checkouts of a large repository                | Sticky disk with `git` mode before `actions/checkout`                                                                                                     | Untested; checkout transport only                                                   | [Git Checkout Mode](#git-checkout-mode)                                                                                              |
 | Repeat an exact, stable workload with a small target tree        | Whole-target archive through Magic Cache with source/build identity in the restore lineage                                                                | Conditional narrow option                                                           | [`rust-cache-mtime-checkout.yml`](../../../examples/workflows/rust-cache-mtime-checkout.yml)                                         |
 | Preserve a complete filesystem with explicit lifecycle ownership | Local EBS snapshot action and mounted snapshot root                                                                                                       | Archived alternative                                                                | [`ebs-snapshot.yml`](../../../examples/workflows/ebs-snapshot.yml)                                                                   |
 
@@ -154,6 +155,22 @@ Before enabling a custom target:
 The dense lineage, fallback, expiry, free-space, and last-writer semantics are in [RunsOn Cache And Disk Details](../../reference/runson-cache-and-disk-details.md). A [proposed Cargo sticky-disk workflow](../../research/runs-on-sccache/sticky-cargo-canary.yml) is retained under research and has not been benchmarked. Use it only after verifying the required platform, trusted writer, capacity, and lifecycle controls; promote a copyable canary into the main examples together with its first measurements.
 
 For missing storage, distinguish explicit cold fallback from setup errors using the [v2.3.1 failure contract](../../reference/runson-cache-and-disk-details.md#sticky-disk-failure-boundary). These source checks do not qualify a managed sticky-target benchmark.
+
+### Git Checkout Mode
+
+Since v2.3.0, `runs-on/action` also accepts `sticky_cache: git` (alias `checkout`) and `git-full`. v2.3.1 was still the latest release on September 26, 2026. These modes keep bare Git mirrors on the sticky disk and serve `actions/checkout` through a local proxy. They speed up checkout transport only. They do not persist the source worktree, its mtimes, or `target/`. Unlike the other modes, the action must run before checkout. The `rust` paths are under the runner home, not the workspace, so both modes can share one invocation on the same disk:
+
+```yaml
+- uses: runs-on/action@v2
+  with:
+    sticky_cache: |
+      git
+      rust
+    sticky_wait_timeout: 15m
+- uses: actions/checkout@v7
+```
+
+A workspace-relative record, such as `custom,path=sticky-target`, cannot share that invocation. Put it in a second `runs-on/action@v2` step after checkout. `git` and `git-full` are mutually exclusive. Prefer `git`; use `git-full` only when the workflow needs arbitrary refs or repeatedly checks out other repositories. Both modes are Linux-only and do not speed up SSH remotes, container jobs, or GitHub Enterprise Server. Size the disk for the mirror plus any other modes on it. This archive has not measured either mode. The [versioned Git-mode details](../../reference/runson-cache-and-disk-details.md#sticky-git-checkout-mode) cover proxy behavior, token handling, Cargo Git dependencies, and trust.
 
 ## Conditional Whole-Target Archives
 

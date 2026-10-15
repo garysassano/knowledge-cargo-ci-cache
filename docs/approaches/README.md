@@ -84,7 +84,7 @@ Keep diagrams beside the canonical explanation of the behavior they represent:
 
 - [`rust-cache` with mtime-preserving checkout](rust-cache-mtime-checkout.md#architecture)
 - [`rust-cache` with source-keyed full target cache](rust-cache-source-keyed-target-cache.md#architecture)
-- [S3-backed `sccache`](../tools/sccache.md#design)
+- [`sccache`](../tools/sccache.md#design)
 - [RunsOn archive, compiler-cache, and sticky-disk choices](../deployments/runs-on/README.md)
 - [Filesystem snapshot lifecycle](ebs-snapshot.md#architecture)
 - [S3 Files network-filesystem experiment](s3-files.md#architecture)

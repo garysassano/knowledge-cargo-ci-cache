@@ -1,12 +1,12 @@
-# S3-Backed `sccache`
+# `sccache`
 
 ## Summary
 
-| Field         | Value                                                                                                                            |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Status        | Leading PR-CI candidate; adoption requires a representative canary                                                               |
-| Use when      | Jobs start with a clean target, source changes frequently, and eligible compiler outputs are reusable across commits.            |
-| Main tradeoff | Cargo orchestration, per-object remote operations, non-cacheable calls, build scripts, and final linking still run on every job. |
+| Field         | Value                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status        | Qualified candidate ([D7](../decisions/README.md)); on RunsOn v3.5+, prefer the isolated Magic Cache mode over direct S3                                            |
+| Use when      | Jobs start with a clean target, source changes frequently, and eligible compiler outputs are reusable across commits.                                               |
+| Main tradeoff | Cargo orchestration, per-object remote operations, non-cacheable calls, build scripts, and final linking still run on every job; misses also lose Cargo pipelining. |
 
 ## Related Files
 
@@ -60,26 +60,23 @@ Old compiler objects can remain in S3 until lifecycle expiry without being downl
 - Keep Cargo registry/Git input caching as a separate measured choice.
 - Confirm object lifecycle, request cost, namespace growth, and error handling.
 
-For RunsOn, `runs-on/action@v2` can configure its S3 backend with:
+## RunsOn backends
 
-```yaml
-- uses: runs-on/action@v2
-  with:
-    sccache: s3
-```
+RunsOn has two sccache integrations. The canonical configuration is in the [RunsOn deployment map](../deployments/runs-on/README.md#compiler-caches-through-magic-cache).
 
-The action exports the S3 backend environment and `RUSTC_WRAPPER=sccache`; a separate installer such as `Mozilla-Actions/sccache-action` is still required. A later `SCCACHE_S3_KEY_PREFIX` step overrides only the stack-wide default namespace rather than configuring a second backend. See the canonical [RunsOn deployment map](../deployments/runs-on/README.md#direct-s3-sccache) for the exact variables and workflow shape.
+| Input           | Backend                                                                                                                                                    | Isolation                                                         | Status on 2026-10-15                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `sccache: true` | sccache's GitHub Actions cache backend served by Magic Cache (RunsOn v3.5.0+); the action starts the server and keeps the runtime token out of later steps | GitHub branch scoping and the stack's cache isolation             | Open [runs-on/action#78](https://github.com/runs-on/action/pull/78); measured |
+| `sccache: s3`   | Direct S3 in the stack bucket, with the runner role                                                                                                        | None at the IAM level: every job on the stack can write `cache/*` | Released; legacy on v3.5.0; basis of the archived S3 benchmarks               |
+
+Both require installing `sccache` separately; `sccache: true` requires it before the action.
 
 ## Trust And Isolation
 
-Direct S3 `sccache` traffic does not inherit Magic Cache protocol isolation automatically.
+- With `sccache: true` on a stack with Magic Cache isolation, writes are limited by the job's GitHub cache token: a pull request writes only its own scope, and low-trust triggers only read.
+- Direct S3 traffic does not inherit that isolation. `SCCACHE_S3_RW_MODE=READ_ONLY` limits `sccache` itself, but arbitrary workflow code can still use the runner role's stack-wide permissions. Use direct S3 only where every job is trusted, or enforce read-only access with a separate role or stack.
 
-- Let only trusted canonical jobs write compiler objects.
-- Give untrusted PR jobs a read-only IAM role or a separate trusted boundary before allowing them to read the shared namespace.
-- `SCCACHE_S3_RW_MODE=READ_ONLY` limits `sccache` itself, but it does not prevent arbitrary workflow code from using broader S3 permissions attached to the runner.
-- Use a dedicated bucket or narrowly scoped prefix policy when untrusted code can execute.
-
-The writer policy must be enforced by IAM or an equivalent infrastructure boundary, not only by a workflow condition.
+The writer policy must be enforced by credentials or an equivalent infrastructure boundary, not only by a workflow condition.
 
 ## What It Reuses
 
@@ -108,16 +105,21 @@ Even a perfect cacheable hit rate leaves:
 - Thousands of small remote operations can create a latency floor.
 - Build scripts, linking, and unsupported crate types remain local.
 - Warm-cache and cold-population behavior differ.
+- On a miss, the client passes rustc's output to Cargo only when the compile has finished, so Cargo cannot start dependent crates early (pipelining). On a large runner a cold build, or a change to a central crate, can be slower than no cache.
+- Every lookup, hits included, first runs rustc with `--emit dep-info` to list the crate's sources.
+- The GitHub Actions backend keeps all entries under one version that includes sccache's own version, so each upgrade starts empty, and a busy scope can exceed Magic Cache's 50,000-entry lookup index.
 - Direct object storage needs lifecycle, IAM, namespace, monitoring, and cost ownership.
 - A compiler-cache outage or wrapper failure needs a tested rollback to direct rustc execution.
 
 ## Evidence
 
-The [cache-strategy benchmarks](../evidence/cache-strategy-benchmarks.md) record the strong default-server warm result, cold-population regression, input-archive ablation, slower client-side modes, and incomplete multilevel writes. The read-only control shows that successful uploads were not the sole cold penalty; wrapper, hashing, remote lookup, compiler interaction, and run variance were not isolated. The [Mr. Boxington comparison](../evidence/mr-boxington-vs-sccache.md) adds separate local and containerized fresh-runner observations. Use those pages for timings and limitations.
+- [Magic Cache benchmark](../evidence/runs-on-magic-cache-sccache-vs-mbx.md) (sccache 0.18.0, `sccache: true`, RunsOn v3.5.0, 32 vCPU): 11.7 s warm against about 32 s for no cache, but 60.0 s cold and 54.5 s on a pull request changing a central crate. Timestamped logs showed the dependents of a missed crate starting 21.5 s after it, against 12 s without a cache. Re-runs of the same pull request wrote their 30 entries under new keys each time and never reused them; the cause was not found.
+- [Cache-strategy benchmarks](../evidence/cache-strategy-benchmarks.md) (direct S3, sccache 0.17): the strong default-server warm result, cold-population regression, input-archive ablation, slower client-side modes, and incomplete multilevel writes. The read-only control showed that uploads were not the sole cold penalty.
+- [Mr. Boxington comparison](../evidence/mr-boxington-vs-sccache.md): separate local and containerized fresh-runner observations.
 
 ## Decision
 
-Use S3-backed `sccache` in default server mode as the leading canary for changing PR workloads after establishing the clean-target baseline. Do not combine it with a separate input-only Cargo archive by default. The two mechanisms own different data, but the measured combination added no compiler-cache reuse benefit and was directionally slower; add Cargo-input caching only when separately measured registry or Git download savings exceed its archive and action overhead. Do not enable client-side or multilevel modes based only on upstream architecture claims; the measured direct-S3 client path was substantially slower despite a high hit rate, and background multilevel writes were incomplete at teardown. Adoption still requires representative source, lockfile, cold, warm, and concurrent scenarios plus IAM-enforced trust separation, lifecycle ownership, cost checks, and a direct-rustc rollback. Do not adopt any mode from hit rate alone.
+[D7](../decisions/README.md) owns the status. On RunsOn v3.5+, use the isolated Magic Cache mode rather than direct S3, and qualify it on the target runner size and change pattern: its warm benefit can be outweighed by its miss path. Do not combine it with a separate input-only Cargo archive by default, do not enable client-side or multilevel modes from architecture claims alone, keep a direct-rustc rollback, and do not adopt any mode from hit rate alone.
 
 ## Upstream References
 
@@ -125,3 +127,4 @@ Use S3-backed `sccache` in default server mode as the leading canary for changin
 - [`sccache` S3 backend](https://github.com/mozilla/sccache/blob/main/docs/S3.md)
 - [`Mozilla-Actions/sccache-action`](https://github.com/Mozilla-Actions/sccache-action)
 - [RunsOn `sccache` example](https://github.com/runs-on/action#sccache)
+- [sccache GitHub Actions cache backend](https://github.com/mozilla/sccache/blob/main/docs/GHA.md)

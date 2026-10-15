@@ -1,5 +1,7 @@
 # RunsOn sccache research
 
+> **Archived 2026-10-15.** RunsOn v3.5.0 ships broker-scoped, per-ref Magic Cache credentials and serves sccache's GitHub Actions cache backend through Magic Cache (`sccache: true`, [runs-on/action#78](https://github.com/runs-on/action/pull/78)). That supersedes most of this collection, which designed a gateway, broker and trust contract for direct S3 `sccache`. Current guidance is in the [RunsOn deployment map](../../deployments/runs-on/README.md#compiler-caches-through-magic-cache) and the [Magic Cache benchmark](../../evidence/runs-on-magic-cache-sccache-vs-mbx.md). The pages remain for their measurement plans, failure-mode analysis and upstream sccache work items (U1–U4, O1), which still apply.
+
 Status: Proposed designs and experiments. Use the [current deployment](../../deployments/runs-on/README.md), [sccache approach](../../tools/sccache.md), and [decisions](../../decisions/README.md) for implementation and adoption. Verified behavior and the dated release refresh live in the [implementation reference](../../reference/compiler-cache-implementation.md); the [planning model](../../evidence/cache-strategy-benchmarks.md#planning-model) is an inference from archived measurements.
 
 This collection explores lower cold-cache overhead, cross-job compiler-object reuse, visible storage failures, and shared-cache ownership. Retrieve the page for the question at hand; copying the existing workflow does not require loading this design.

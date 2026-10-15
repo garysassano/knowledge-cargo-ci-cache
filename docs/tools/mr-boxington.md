@@ -2,11 +2,11 @@
 
 ## Summary
 
-| Field         | Value                                                                                                                                                                          |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Status        | Qualified canary candidate; mbx 1.15.0 with action 1.4.0 retained the measured object-mode performance of 1.12.0 while expanding native-library cache coverage.                |
-| Use when      | Evaluating target-tree reuse or broader compilation/build-action reuse beyond sccache's eligible compiler invocations.                                                         |
-| Main tradeoff | Object mode is the qualified portable choice. Target mode was faster in immediate warm tests but restores mutable Cargo state and remains unqualified for high-churn lineages. |
+| Field         | Value                                                                                                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status        | Qualified canary candidate (D9). Released path: object mode with mbx 1.15.0 and action 1.4.0. On RunsOn, the proposed per-object `mbx: true` helper was fastest in every measured scenario. |
+| Use when      | Evaluating target-tree reuse or broader compilation/build-action reuse beyond sccache's eligible compiler invocations.                                                                      |
+| Main tradeoff | Object mode is the qualified portable choice. Target mode was faster in immediate warm tests but restores mutable Cargo state and remains unqualified for high-churn lineages.              |
 
 ## Related files
 
@@ -16,6 +16,7 @@
 | [Mr. Boxington 1.15 target-mode features](../evidence/mr-boxington-target-features.md)         | Target adoption, detached collection, stats latency, and incremental transport behavior.     |
 | [Compiler-cache integration diagnosis](../operations/diagnosing-compiler-cache-integration.md) | Distinguishes action startup, archive restore, path mapping, object reuse, and publication.  |
 | [Object-mode restore history](../research/mr-boxington-object-restore.md)                      | Measured bottleneck, released directory fix, and remaining upstream design options.          |
+| [Magic Cache benchmark](../evidence/runs-on-magic-cache-sccache-vs-mbx.md)                     | mbx through the RunsOn Magic Cache helper compared with `sccache: true` and no cache.        |
 | [Ecosystem sources](../reference/vendor-ci-cache-sources.md)                                   | Upstream documentation, action, limits, and vendor claims.                                   |
 
 ## Design
@@ -32,17 +33,20 @@ The [v1.4.0 action metadata](https://github.com/jdx/mr-boxington-action/blob/v1.
 
 The backend and payload-mode settings describe different layers:
 
-| Configuration                                       | Data path                                                                                    | Role of `github-cache-mode`         |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `backend: github` with `github-cache-mode: objects` | Exported MBX action/object closure transported by an Actions-cache-compatible backend        | Selects the portable object payload |
-| `backend: github` with `github-cache-mode: target`  | Pruned Cargo target and Cargo input state transported by an Actions-cache-compatible backend | Selects the target-state payload    |
-| `backend: server`                                   | Native MBX protocol to an `mr-boxington-cache` endpoint                                      | Not used                            |
-| `backend: local` with `MBX_REMOTE_URL=s3://...`     | Native MBX direct-S3 object remote configured through environment variables                  | Not used                            |
-| `backend: local` without a remote                   | Runner-local MBX store only                                                                  | Not used                            |
+| Configuration                                         | Data path                                                                                    | Role of `github-cache-mode`         |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `backend: github` with `github-cache-mode: objects`   | Exported MBX action/object closure transported by an Actions-cache-compatible backend        | Selects the portable object payload |
+| `backend: github` with `github-cache-mode: target`    | Pruned Cargo target and Cargo input state transported by an Actions-cache-compatible backend | Selects the target-state payload    |
+| `backend: server`                                     | Native MBX protocol to an `mr-boxington-cache` endpoint                                      | Not used                            |
+| `backend: local` with `MBX_REMOTE_URL=s3://...`       | Native MBX direct-S3 object remote configured through environment variables                  | Not used                            |
+| `backend: local` without a remote                     | Runner-local MBX store only                                                                  | Not used                            |
+| `backend: remote` after RunsOn `mbx: true` (proposed) | Native MBX protocol to a helper in the job that stores each object in RunsOn Magic Cache     | Not used                            |
 
-A RunsOn integration should therefore configure a backend such as a managed server or direct S3. It does not need separate RunsOn settings for GitHub `objects` and `target`; those remain choices owned by `jdx/mr-boxington-action` when `backend: github`. Target mode already travels through RunsOn Magic Cache when that service replaces the GitHub Actions cache endpoint.
+A RunsOn integration therefore configures a native remote. It does not need separate RunsOn settings for GitHub `objects` and `target`; those remain choices owned by `jdx/mr-boxington-action` when `backend: github`, and both already travel through Magic Cache. The proposed `mbx: true` ([runs-on/action#65](https://github.com/runs-on/action/pull/65), open on 2026-10-15) starts a helper that serves the native protocol on `127.0.0.1` and stores each object as a GitHub Actions cache entry, so objects are stored once and the stack's cache isolation applies, with nothing deployed. Direct S3 to the stack bucket is not isolated and was rejected; the cache server needs deployed infrastructure. See the [RunsOn backend boundary](../deployments/runs-on/README.md#mr-boxington-backend-boundary).
 
 The existing `jdx/mr-boxington-cache` server is materially different from direct S3. It supports S3-backed blob storage through the standard AWS SDK credential chain, GitHub OIDC namespace grants, zstd-compressed transfers, streaming blob packs, batched lookups, action promises, PostgreSQL metadata, horizontal replicas, and Prometheus metrics. Direct S3 uses raw per-object S3 operations without those protocol features and currently requires explicit access-key environment variables. See the [remote-backend research](../research/mr-boxington-remote-backends.md).
+
+mbx publishes to any native remote only from a push to a protected branch, whatever the backend enforces, and drains its uploads before the command exits. Its action manifests, which drive prefetch, are keyed by the lockfile and paths. The [implementation reference](../reference/compiler-cache-implementation.md#mr-boxington-v1240-remote-protocol) owns these versioned details.
 
 Record the mbx binary version, action revision, backend, payload mode where applicable, cache generation or namespace, trust/save policy, target path, and container path mapping in every measurement.
 
@@ -100,8 +104,10 @@ The target-feature evaluation adopted a 5,245,708,998-byte restored target in 77
 
 Action 1.4.0 target mode exports `MBX_TARGET_VIEWS=0` and saves a pruned real target directory. The adoption test therefore re-enabled views after action setup and moved the managed directory back before post-save. Treat `mbx adopt` and automatic GC as persistent local-target features unless an integration explicitly bridges this action boundary; neither feature places a byte, age, or generation bound on the transported target archive.
 
+The [Magic Cache benchmark](../evidence/runs-on-magic-cache-sccache-vs-mbx.md) measured mbx 1.24.0 through the proposed `mbx: true` helper on ruff with 32 vCPUs: 35.5 s cold, 7.3 s warm and 27.1 s on a pull request changing a central crate, against 32.5 s, about 32 s and 32.0 s without a cache and 60.0 s, 11.7 s and 54.5 s with `sccache: true`. It stored 4,604 objects (1.7 GiB) per cold build, about 7× sccache. Pull requests do not publish, so each pull-request push rebuilds its own changes.
+
 Target mode's short exact-warm result does not establish safe long-term behavior. Its current save cleanup removes final products and entries whose package names are absent from current Cargo metadata, but keeps every hash variant matching a current package in `build`, `.fingerprint`, and `deps`. It has no byte limit, generation limit, or age-based pruning. This is not proof that it will reproduce the exact `Swatinem/rust-cache` incident, but it leaves the same class of copy-forward growth plausible in frequently changing CI. The production whole-target lineage recorded here grew from 206 MB to 13.89 GB in under five days and later reached 17.82 GB. Qualify target mode with a multi-generation changed-source soak test before using it for that workload.
 
 ## Decision
 
-Use mbx object mode with mbx 1.15.0 and action 1.4.0 as a qualified portable clean-target canary alongside sccache under decision D9. Set `backend: github` and `github-cache-mode: objects` explicitly. Keep target mode to narrow, stable, monitored workloads until archive size stays bounded through representative source, feature, dependency, and build-script changes. Treat native S3 and the existing cache server as separate backend candidates; the current native-S3 measurement did not beat action object mode, while the server has not yet been benchmarked here.
+Use mbx object mode with mbx 1.15.0 and action 1.4.0 as a qualified portable clean-target canary alongside sccache under decision D9. Set `backend: github` and `github-cache-mode: objects` explicitly. Keep target mode to narrow, stable, monitored workloads until archive size stays bounded through representative source, feature, dependency, and build-script changes. On RunsOn, the per-object Magic Cache helper (`mbx: true`) was the fastest measured strategy and is the candidate to adopt once released, qualified on the target runner size; until then, object mode through `backend: github` is the released path. Do not use direct S3 to a shared stack bucket, which is not isolated.

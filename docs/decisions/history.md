@@ -14,6 +14,13 @@ When a decision in [`docs/decisions/README.md`](README.md) changes, append an en
 
 ## Entries
 
+### D7, D9 and D12 — Compiler caches through RunsOn Magic Cache
+
+- Changed: 2026-10-15
+- Prior conclusions: D7 treated S3-backed `sccache` 0.17 in default server mode as the qualified portable compiler-cache candidate and control. D9 kept native S3 and the `mr-boxington-cache` server as separate MBX backend candidates, with the server preferred for investigation. No decision covered Magic Cache isolation.
+- New conclusions: D7 keeps sccache as a qualified candidate whose value depends on runner size and change pattern, and prefers the isolated Magic Cache mode (`sccache: true`) on RunsOn v3.5+. D9 names the per-object Magic Cache helper (`mbx: true`) the leading RunsOn candidate once released, and drops direct S3 and the server for RunsOn. D12 recommends enabling Magic Cache isolation and treats direct S3 caches as non-isolated.
+- Reason: RunsOn v3.5.0 serves sccache's GitHub Actions cache backend through broker-scoped, per-ref credentials, while the runner role keeps stack-wide access to `cache/*`. On ruff with 32 vCPUs, `sccache: true` was 2.8× faster than no cache warm but slower cold and on a central-crate pull request, because misses lose Cargo pipelining; the mbx helper was fastest in every scenario at about 7× the storage. The RunsOn maintainer declined integrations that need deployed infrastructure. See the [Magic Cache benchmark](../evidence/runs-on-magic-cache-sccache-vs-mbx.md) and the [implementation reference](../reference/compiler-cache-implementation.md#release-refresh-2026-10-15).
+
 ### D9 — Qualify mbx 1.15.0 for object mode
 
 - Changed: 2026-09-22

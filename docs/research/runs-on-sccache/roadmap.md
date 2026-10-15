@@ -1,5 +1,7 @@
 # RunsOn sccache research roadmap
 
+> **Archived 2026-10-15.** RunsOn v3.5.0 ships broker-scoped, per-ref Magic Cache credentials and serves sccache's GitHub Actions cache backend through Magic Cache (`sccache: true`, [runs-on/action#78](https://github.com/runs-on/action/pull/78)). That supersedes most of this collection, which designed a gateway, broker and trust contract for direct S3 `sccache`. Current guidance is in the [RunsOn deployment map](../../deployments/runs-on/README.md#compiler-caches-through-magic-cache) and the [Magic Cache benchmark](../../evidence/runs-on-magic-cache-sccache-vs-mbx.md). The pages remain for their measurement plans, failure-mode analysis and upstream sccache work items (U1–U4, O1), which still apply.
+
 Status: Proposed work, not completed implementation or released service features. This is the sole task inventory for the research collection. Design pages own contracts and alternatives; [validation](validation.md) owns qualification tests. Task IDs are stable references, not release phases.
 
 Start from the [versioned implementation reference](../../reference/compiler-cache-implementation.md), [current deployment](../../deployments/runs-on/README.md), and [limited performance model](../../evidence/cache-strategy-benchmarks.md#planning-model). None of the proposed gains is established by hit rate or a transport microbenchmark alone.

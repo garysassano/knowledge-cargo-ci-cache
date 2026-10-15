@@ -46,6 +46,8 @@ flowchart LR
 
 Magic Cache changes the backend for compatible archive actions. It does not change their keys, selected paths, extraction, cleanup, exact-hit behavior, or save rules. Direct `sccache` and sticky disks bypass that archive path and need separate lifecycle and trust controls.
 
+Since v3.5.0, Magic Cache also serves per-object clients through the same GitHub Actions cache protocol: sccache's GHA backend (`sccache: true`), gocacheprog and the proposed mbx helper (`mbx: true`). They store one cache entry per compiler output or object instead of an archive, with the same scoping and retention as archive entries. The [implementation reference](compiler-cache-implementation.md#release-refresh-2026-10-15) owns their versioned behavior.
+
 ## Lifecycle Comparison
 
 ### Magic Cache Archive
@@ -168,15 +170,18 @@ Trust notes:
 
 ## Magic Cache Isolation
 
-RunsOn v3.2 documents optional repository and branch isolation for the Magic Cache protocol. It is disabled by default for backward compatibility.
+RunsOn v3.2 added optional repository and branch isolation for the Magic Cache protocol. It is still disabled by default in v3.5.0 (`EnableCacheIsolation: "false"`), and RunsOn recommends enabling it on every stack.
 
-When enabled:
+When enabled (v3.5.0 template, reviewed 2026-10-15):
 
-- New protocol cache objects use the scoped namespace.
-- Existing unscoped objects become cold and expire according to normal backend lifecycle.
-- Workflows that intentionally share cache objects across repositories or branches must be reviewed.
+- Magic Cache objects move from `cache/*` to `scoped-cache/<owner>/<repo>/<scope>/<version>/…`, where `<scope>` is the first 16 hex characters of the SHA-256 of the ref (for example `refs/pull/2/merge`). The first build per repository and branch is cold; older objects expire normally.
+- Only sessions minted by a cache-credential broker can reach `scoped-cache/*`. The broker validates the job's GitHub runtime token and builds the session policy from its `ac` claim: read for scopes with permission bit 1, write for bit 2. A pull request can therefore read its own ref, its base branch and the default branch, and write only its own ref. GitHub's `cache-mode: read` and low-trust triggers produce read-only tokens, which the broker honors.
+- The runner instance role keeps get, put and delete on `cache/*` for every repository on the stack: "Repository prefixes prevent collisions; they are not an IAM isolation boundary." Direct S3 clients such as `sccache: s3` stay in that shared space, and RunsOn's docs say isolation "is not a trust boundary for untrusted job code"; use separate stacks for untrusted repositories.
 
-This isolates cache-protocol credentials, not arbitrary direct S3 clients. It does not protect a direct `sccache` bucket or prefix from workflow code that inherits broader runner-role permissions.
+Two Magic Cache properties matter for per-object clients such as sccache's GHA backend, gocacheprog and the mbx helper:
+
+- The lookup index that serves entries written by other jobs covers a cache-version directory only while it holds fewer than 50,000 entries, and only after 8 lookups asked for it. Behavior beyond that is not public.
+- Retention is fixed from creation: "Cache hits do not extend that window." Entries that a client never rewrites, such as dependency compilations, expire together.
 
 The same [v3.2 upgrade guide](https://runs-on.com/docs/maintenance/v3-2-upgrade/) records a Fleet-specific cold classic-cache transition even when isolation remains disabled: the previous empty repository prefix is corrected to `cache/v1/<owner>/<repo>/...`. Do not attribute every first miss after an upgrade to enabling isolation.
 
@@ -199,7 +204,7 @@ Checked September 6, 2026. Resolve these against the exact installed release whe
 | Sticky path table               | The website lists `~/.pnpm-store` and `~/.bundle`; [v2.3.1 mode definitions](https://github.com/runs-on/action/blob/v2.3.1/internal/stickydisk/modes.go) use the pnpm data-store path (`~/.local/share/pnpm/store` or `$XDG_DATA_HOME/pnpm/store`) and `~/.bundle/cache`. Verify the tool's actual configured path.                           |
 | BuildKit blog example           | The [sticky introduction](https://runs-on.com/blog/introducing-sticky-disks/) uses `buildkit-inline-config`, which is absent from [v2.3.1 metadata](https://github.com/runs-on/action/blob/v2.3.1/action.yml). The released README uses `buildkit-builder`, fixed builder topology, and `cleanup: false`; do not copy the unsupported output. |
 | Docker ECR availability         | The [Docker page](https://runs-on.com/docs/performance/caching/docker/) says the ephemeral registry is Flex-only in its availability paragraph but also gives Fleet `enable_ecr` configuration. Treat Fleet availability as requiring release/module verification, not as a settled conclusion from that page alone.                          |
-| sccache prefix input            | [PR #58](https://github.com/runs-on/action/pull/58) is open. Released v2.3.1 still exports a flat prefix and has no `sccache_prefix` input; retain the [deployment override](../deployments/runs-on/README.md#direct-s3-sccache).                                                                                                             |
+| sccache prefix input            | Landed as `0b7a05e` from [PR #58](https://github.com/runs-on/action/pull/58) and released in [v2.4.0](https://github.com/runs-on/action/releases/tag/v2.4.0): the default `SCCACHE_S3_KEY_PREFIX` is scoped by repository and platform, and the `sccache_prefix` input was dropped. The prefix still does not enforce IAM isolation.          |
 | Sticky Git modes                | Checked September 26, 2026. The website lists only `git`/`checkout`, described as GitHub.com repository mirrors. In v2.3.1, `git` covers only workflow-repository history, and `git-full` provides full mirrors. Use the released README and the [Git-mode details](#sticky-git-checkout-mode).                                               |
 | Managed tool installation cache | Maintainer [PR #54](https://github.com/runs-on/action/pull/54) and stacked [PR #55](https://github.com/runs-on/action/pull/55) are open. `tool-cache` is not a released v2.3.1 mode. Cargo's built-in mode does not persist installed toolchains.                                                                                             |
 
@@ -211,7 +216,7 @@ These contributions were open at the September 6, 2026 review. They are source p
 
 | Report                                                                                                                                                                                                     | Contribution                                                                                                                                                      | Remaining boundary                                                                                                                                             |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [sccache prefix proposal](https://github.com/runs-on/action/pull/58)                                                                                                                                       | PR #58 was updated with current upstream changes, prefix-migration guidance, environment-export tests, and rebuilt binaries.                                      | Keep the released-action override until a release contains the input; the namespace still does not enforce IAM isolation.                                      |
+| [sccache prefix proposal](https://github.com/runs-on/action/pull/58)                                                                                                                                       | Released in v2.4.0 (squashed as `0b7a05e`).                                                                                                                       | Remove the manual prefix override on v2.4.0 or newer; the namespace still does not enforce IAM isolation.                                                      |
 | [BuildKit API selection #541](https://github.com/runs-on/runs-on/issues/541)                                                                                                                               | [Action PR #60](https://github.com/runs-on/action/pull/60) normalizes the legacy affirmative flag and documents explicit API v2 configuration.                    | Requires the action before BuildKit; current-agent confirmation and an AWS integration run remain separate from local regression tests.                        |
 | [Transient download diagnostics #542](https://github.com/runs-on/runs-on/issues/542)                                                                                                                       | [CLI PR #26](https://github.com/runs-on/cli/pull/26) adds a bounded Linux workflow probe and interpretation guide.                                                | Workflow-collected observations; no automatic provider telemetry/alerting or reproduced egress defect.                                                         |
 | [Snapshot matrix #21](https://github.com/runs-on/snapshot/issues/21), [tool setup #22](https://github.com/runs-on/snapshot/issues/22), and [smart save #23](https://github.com/runs-on/snapshot/issues/23) | [Draft snapshot PR #25](https://github.com/runs-on/snapshot/pull/25) adds keyed streams, restore outputs, Git-path save decisions, and a Cargo/tool setup recipe. | Legacy action proposal requiring EBS lifecycle and service-cleanup validation; distinct from the archive's measured custom fork and from managed sticky disks. |
